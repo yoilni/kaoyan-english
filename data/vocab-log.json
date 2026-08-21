@@ -1,0 +1,16 @@
+{
+  "schedule_days": [1, 2, 4, 7, 15, 30],
+  "days": {
+    "2026-08-19": {
+      "new": ["sovereign","fiscal","deficit","issuance","maturity","duration","coupon","principal","creditor","auction","monetary","tightening","easing","transmission","mortgage","corporate","household","refinancing","rollover","solvency","discipline","expenditure","taxation","budget","stimulus","shock","pass-through","expectation","anchor","compensation","discount","present","cashflow","sensitivity","equity","earnings","multiple","repricing","correlation","hedge","reserve","currency","depreciation","imported","purchasing","power","real","nominal","trade-off","stability"]
+    },
+    "2026-08-20": {
+      "new": ["accelerate","adequate","advocate","alternative","ambiguous","anticipate","arbitrary","assumption","asymmetric","attain","attribute","capacity","coherent","compel","complement","concede","consequence","consolidate","constraint","controversial","conventional","coordinate","decline","deduce","derive","diminish","distort","domestic","dynamic","empirical","enhance","equivalent","erode","explicit","facilitate","fluctuate","framework","incentive","inevitable","integrity","intervention","marginal","proportion","reconcile","regulate","reinforce","reluctant","respective","transparent","viable"],
+      "review": {"fiscal":1,"discipline":1,"stimulus":1,"expectation":1,"equity":1,"correlation":1,"stability":1,"household":1}
+    },
+    "2026-08-21": {
+      "new": ["adjacent","affordability","aggregate","allocate","approval","burden","comply","comprehensive","consumption","criterion","decentralized","delay","displace","dominate","efficiency","enable","enforce","exceed","expand","externality","foundation","generate","impose","maintain","minimize","modify","obtain","permit","persist","priority","prohibit","promote","prospect","recover","restrict","retain","scale","secure","shortage","substantial","sufficient","transform","utility","vulnerable","welfare","withdraw","adapt","territory","urban","regional"],
+      "review": {"accelerate":1,"constraint":1,"incentive":1,"empirical":1,"viable":1,"intervention":1,"fiscal":2,"stability":2,"household":2,"expectation":2}
+    }
+  }
+}
