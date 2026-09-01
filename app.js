@@ -34,6 +34,15 @@ async function speak(word){
   }catch(e){}
   tts(word);
 }
+function makePhonetic(word,label=word){
+  const ph=document.createElement('button');
+  ph.type='button';ph.className='phonetic';ph.dataset.speak=word;
+  ph.setAttribute('aria-label',`播放 ${label} 的真人词典读音`);
+  ph.title='真人词典发音优先；不可用时使用浏览器发音';
+  ph.textContent=(ipa[word]||'')+' 🔊';
+  ph.addEventListener('click',ev=>{ev.stopPropagation();speak(word)});
+  return ph;
+}
 const article=document.querySelector('.article');
 if(article){
   const all={};
@@ -56,15 +65,33 @@ if(article){
         const b=document.createElement('button');
         b.className='word'+(d.type==='review'?' review':'');b.dataset.word=key;b.dataset.type=d.type;b.append(document.createTextNode(match));
         const s=document.createElement('span');s.textContent=`（${d.zh}）`;b.append(s);frag.append(b);
-        const ph=document.createElement('button');ph.type='button';ph.className='phonetic';ph.dataset.speak=key;
-        ph.setAttribute('aria-label',`播放 ${match} 的真人词典读音`);ph.title='真人词典发音优先；不可用时使用浏览器发音';ph.textContent=(ipa[key]||'')+' 🔊';
-        ph.addEventListener('click',ev=>{ev.stopPropagation();speak(key)});frag.append(ph);
+        frag.append(makePhonetic(key,match));
         last=offset+match.length;return match;
       });
       frag.append(text.slice(last));node.replaceWith(frag);
     });
   }
 }
+function enhanceVocabList(details,map,type){
+  if(!details||!map||!Object.keys(map).length)return;
+  const old=details.querySelector('p');
+  if(!old)return;
+  const wrap=document.createElement('div');wrap.className='vocab-list';
+  Object.entries(map).forEach(([word,zh])=>{
+    const key=word.toLowerCase();
+    const row=document.createElement('div');row.className='vocab-item';
+    const head=document.createElement('span');head.className='vocab-head';
+    const w=document.createElement('b');w.textContent=word;head.append(w,document.createTextNode(' '));head.append(makePhonetic(key,word));
+    const meaning=document.createElement('span');meaning.className='vocab-meaning';meaning.textContent=' '+zh;
+    row.append(head,meaning);wrap.append(row);
+  });
+  old.replaceWith(wrap);
+}
+const detailEls=[...document.querySelectorAll('details')];
+const newDetails=detailEls.find(d=>/今日\s*50\s*个新词|今日新词/.test(d.querySelector('summary')?.textContent||''));
+const reviewDetails=detailEls.find(d=>/今日复习词/.test(d.querySelector('summary')?.textContent||''));
+enhanceVocabList(newDetails,window.KAOYAN_NEW||{},'new');
+enhanceVocabList(reviewDetails,window.KAOYAN_REVIEW||{},'review');
 const m=new Set(JSON.parse(localStorage.getItem('kaoyan_mastered')||'[]'));
 const viewedNew=new Set(),viewedReview=new Set();
 const totalNew=Object.keys(window.KAOYAN_NEW||{}).length,totalReview=Object.keys(window.KAOYAN_REVIEW||{}).length;
