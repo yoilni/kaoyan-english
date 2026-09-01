@@ -2,10 +2,16 @@
 const BUILTIN_IPA={"amplify":"/ˈæmplɪfaɪ/","breach":"/briːtʃ/","cascade":"/kæˈskeɪd/","centralized":"/ˈsentrəlaɪzd/","concentration":"/ˌkɑːnsənˈtreɪʃən/","contagion":"/kənˈteɪdʒən/","compromise":"/ˈkɑːmprəmaɪz/","confidential":"/ˌkɑːnfɪˈdenʃəl/","disruption":"/dɪsˈrʌpʃən/","emergency":"/ɪˈmɜːrdʒənsi/","fraud":"/frɔːd/","governance":"/ˈɡʌvərnəns/","hazard":"/ˈhæzərd/","inherent":"/ɪnˈhɪrənt/","interconnected":"/ˌɪntərkəˈnektɪd/","interrupt":"/ˌɪntəˈrʌpt/","malicious":"/məˈlɪʃəs/","mutual":"/ˈmjuːtʃuəl/","oversight":"/ˈoʊvərsaɪt/","protocol":"/ˈproʊtəkɔːl/","redundancy":"/rɪˈdʌndənsi/","safeguard":"/ˈseɪfɡɑːrd/","supervise":"/ˈsuːpərvaɪz/","systemic":"/sɪˈstemɪk/","transaction":"/trænˈzækʃən/","unauthorized":"/ʌnˈɔːθəraɪzd/","vulnerability":"/ˌvʌlnərəˈbɪləti/","withstand":"/wɪðˈstænd/","anomaly":"/əˈnɑːməli/","assurance":"/əˈʃʊrəns/","associate":"/əˈsoʊʃieɪt/","consecutive":"/kənˈsekjətɪv/","crisis":"/ˈkraɪsɪs/","decisive":"/dɪˈsaɪsɪv/","deficiency":"/dɪˈfɪʃənsi/","destabilize":"/diːˈsteɪbəlaɪz/","forensic":"/fəˈrenzɪk/","insurer":"/ɪnˈʃʊrər/","intermediary":"/ˌɪntərˈmiːdieri/","jurisdiction":"/ˌdʒʊrɪsˈdɪkʃən/","recovery":"/rɪˈkʌvəri/","reputation":"/ˌrepjəˈteɪʃən/","robust":"/roʊˈbʌst/","simultaneous":"/ˌsaɪməlˈteɪniəs/","suspend":"/səˈspend/","threat":"/θret/","trace":"/treɪs/","ultimate":"/ˈʌltɪmət/","violate":"/ˈvaɪəleɪt/","vigilance":"/ˈvɪdʒələns/","accountable":"/əˈkaʊntəbəl/","consensus":"/kənˈsensəs/","obligation":"/ˌɑːbləˈɡeɪʃən/","authority":"/əˈθɔːrəti/","confirm":"/kənˈfɜːrm/","agency":"/ˈeɪdʒənsi/","crucial":"/ˈkruːʃəl/","legitimate":"/lɪˈdʒɪtəmət/","verify":"/ˈverɪfaɪ/","resilience":"/rɪˈzɪliəns/","liquidity":"/lɪˈkwɪdəti/","uncertainty":"/ʌnˈsɜːrtənti/"};
 const ipa={...BUILTIN_IPA,...(window.KAOYAN_IPA||{})};
 const maps=[['new',window.KAOYAN_NEW||{}],['review',window.KAOYAN_REVIEW||{}]];
+const audioMap=Object.fromEntries(Object.entries(window.KAOYAN_AUDIO||{}).map(([k,v])=>[k.toLowerCase(),v]));
 let activeUtterance=null;
+let activeAudio=null;
+function stopAudio(){
+  try{if(activeAudio){activeAudio.pause();activeAudio.currentTime=0;activeAudio=null;}}catch(e){}
+}
 function tts(word){
   if(!('speechSynthesis' in window)) return false;
   try{
+    stopAudio();
     const synth=window.speechSynthesis;
     synth.cancel();
     const u=new SpeechSynthesisUtterance(word);
@@ -22,16 +28,38 @@ function tts(word){
     return true;
   }catch(e){return false;}
 }
+function speak(word){
+  const key=word.toLowerCase();
+  const src=audioMap[key];
+  if(!src)return tts(key);
+  try{
+    window.speechSynthesis?.cancel();
+    stopAudio();
+    const a=new Audio(src);
+    activeAudio=a;
+    a.preload='auto';
+    const fallback=()=>{
+      if(activeAudio===a)activeAudio=null;
+      try{a.pause();}catch(e){}
+      tts(key);
+    };
+    a.onerror=fallback;
+    a.onended=()=>{if(activeAudio===a)activeAudio=null;};
+    const p=a.play();
+    if(p&&typeof p.catch==='function')p.catch(fallback);
+    return true;
+  }catch(e){return tts(key);}
+}
 function makePhonetic(word,label=word){
   const ph=document.createElement('button');
   ph.type='button';ph.className='phonetic';ph.dataset.speak=word;
   ph.setAttribute('aria-label',`播放 ${label} 的发音`);
-  ph.title='点击后直接使用 Chrome 美式英语发音';
+  ph.title=audioMap[word.toLowerCase()]?'真人美式发音；播放失败时自动使用 Chrome 美式发音':'暂无预缓存真人音频，使用 Chrome 美式发音';
   ph.textContent=(ipa[word]||'')+' 🔊';
   ph.addEventListener('click',ev=>{
     ev.preventDefault();
     ev.stopPropagation();
-    tts(word);
+    speak(word);
   },{passive:false});
   return ph;
 }
@@ -101,7 +129,7 @@ updateCounters();
 const info=document.getElementById('newCount')?.closest('.card');
 if(info&&!document.getElementById('chromeTtsTest')){
   const btn=document.createElement('button');
-  btn.type='button';btn.id='chromeTtsTest';btn.className='btn';btn.textContent='🔊 测试 Chrome 发音';btn.title='使用与单词音标按钮完全相同的 Web Speech API';
+  btn.type='button';btn.id='chromeTtsTest';btn.className='btn';btn.textContent='🔊 测试 Chrome 发音';btn.title='强制使用浏览器 Web Speech API，不使用预缓存真人音频';
   const status=document.createElement('span');status.id='chromeTtsStatus';status.className='muted';status.style.marginLeft='8px';
   btn.addEventListener('click',()=>{
     if(tts('systemic')){status.textContent='正在用浏览器语音朗读：systemic';setTimeout(()=>{status.textContent='';},3500);}
