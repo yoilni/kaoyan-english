@@ -3,8 +3,11 @@ const BUILTIN_IPA={"amplify":"/ˈæmplɪfaɪ/","breach":"/briːtʃ/","cascade":"
 const ipa={...BUILTIN_IPA,...(window.KAOYAN_IPA||{})};
 const maps=[['new',window.KAOYAN_NEW||{}],['review',window.KAOYAN_REVIEW||{}]];
 const audioCache=new Map();
+const audioPending=new Map();
+let currentAudio=null;
 function tts(word){
   if(!('speechSynthesis' in window)) return false;
+  try{if(currentAudio){currentAudio.pause();currentAudio=null;}}catch(e){}
   window.speechSynthesis.cancel();
   const u=new SpeechSynthesisUtterance(word);
   u.lang='en-US';u.rate=.82;
@@ -14,58 +17,67 @@ function tts(word){
   window.speechSynthesis.speak(u);
   return true;
 }
-function fetchWithTimeout(url,ms=2000){
-  const ctrl=new AbortController();
-  const timer=setTimeout(()=>ctrl.abort(),ms);
-  return fetch(url,{signal:ctrl.signal}).finally(()=>clearTimeout(timer));
-}
-function playAudioOrFallback(src,word){
-  return new Promise(resolve=>{
-    let settled=false;
-    const fallback=()=>{
-      if(settled)return;
-      settled=true;
-      try{audio.pause();audio.src='';}catch(e){}
-      tts(word);
-      resolve(false);
-    };
-    const audio=new Audio();
-    audio.preload='auto';
-    audio.onended=()=>{if(!settled){settled=true;resolve(true);}};
-    audio.onerror=fallback;
-    const timer=setTimeout(fallback,2500);
-    audio.onplaying=()=>clearTimeout(timer);
-    audio.src=src;
-    const p=audio.play();
-    if(p&&typeof p.catch==='function')p.catch(fallback);
-  });
-}
-async function speak(word){
-  try{
-    let src=audioCache.get(word);
-    if(src===undefined){
-      const r=await fetchWithTimeout('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(word),2000);
+async function resolveAudio(word){
+  if(audioCache.has(word))return audioCache.get(word);
+  if(audioPending.has(word))return audioPending.get(word);
+  const job=(async()=>{
+    try{
+      const ctrl=new AbortController();
+      const timer=setTimeout(()=>ctrl.abort(),2500);
+      const r=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(word),{signal:ctrl.signal});
+      clearTimeout(timer);
       if(!r.ok)throw new Error('dictionary');
       const data=await r.json();
       const ps=(data||[]).flatMap(x=>x.phonetics||[]);
       const us=ps.find(x=>x.audio&&(/-us/i.test(x.audio)||/[_-]us[_./-]/i.test(x.audio)));
       const any=ps.find(x=>x.audio);
-      src=(us||any)?.audio||'';
+      let src=(us||any)?.audio||'';
       if(src&&src.startsWith('//'))src='https:'+src;
       audioCache.set(word,src);
+      return src;
+    }catch(e){
+      audioCache.set(word,'');
+      return '';
+    }finally{
+      audioPending.delete(word);
     }
-    if(src){
-      await playAudioOrFallback(src,word);
+  })();
+  audioPending.set(word,job);
+  return job;
+}
+function warmAudio(){
+  const words=[...new Set(maps.flatMap(([,map])=>Object.keys(map).map(w=>w.toLowerCase())))];
+  let i=0;
+  const next=()=>{
+    if(i>=words.length)return;
+    resolveAudio(words[i++]).finally(()=>setTimeout(next,40));
+  };
+  for(let n=0;n<3;n++)next();
+}
+function speak(word){
+  const src=audioCache.get(word);
+  if(src){
+    try{
+      window.speechSynthesis?.cancel();
+      if(currentAudio)currentAudio.pause();
+      const a=new Audio(src);
+      currentAudio=a;
+      a.preload='auto';
+      a.onended=()=>{if(currentAudio===a)currentAudio=null;};
+      a.onerror=()=>{if(currentAudio===a)currentAudio=null;tts(word);};
+      const p=a.play();
+      if(p&&typeof p.catch==='function')p.catch(()=>{if(currentAudio===a)currentAudio=null;tts(word);});
       return;
-    }
-  }catch(e){}
+    }catch(e){tts(word);return;}
+  }
   tts(word);
+  if(!audioCache.has(word))resolveAudio(word);
 }
 function makePhonetic(word,label=word){
   const ph=document.createElement('button');
   ph.type='button';ph.className='phonetic';ph.dataset.speak=word;
-  ph.setAttribute('aria-label',`播放 ${label} 的真人词典读音`);
-  ph.title='真人词典发音优先；不可用时使用浏览器发音';
+  ph.setAttribute('aria-label',`播放 ${label} 的发音`);
+  ph.title='真人词典音频已就绪时优先播放；否则立即使用 Chrome 美式发音';
   ph.textContent=(ipa[word]||'')+' 🔊';
   ph.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();speak(word)});
   return ph;
@@ -144,5 +156,6 @@ if(info&&!document.getElementById('chromeTtsTest')){
   });
   info.append(document.createElement('br'),btn,status);
 }
+warmAudio();
 document.getElementById('topBtn')?.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}));
 })();
