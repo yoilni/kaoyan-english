@@ -14,11 +14,37 @@ function tts(word){
   window.speechSynthesis.speak(u);
   return true;
 }
+function fetchWithTimeout(url,ms=2000){
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),ms);
+  return fetch(url,{signal:ctrl.signal}).finally(()=>clearTimeout(timer));
+}
+function playAudioOrFallback(src,word){
+  return new Promise(resolve=>{
+    let settled=false;
+    const fallback=()=>{
+      if(settled)return;
+      settled=true;
+      try{audio.pause();audio.src='';}catch(e){}
+      tts(word);
+      resolve(false);
+    };
+    const audio=new Audio();
+    audio.preload='auto';
+    audio.onended=()=>{if(!settled){settled=true;resolve(true);}};
+    audio.onerror=fallback;
+    const timer=setTimeout(fallback,2500);
+    audio.onplaying=()=>clearTimeout(timer);
+    audio.src=src;
+    const p=audio.play();
+    if(p&&typeof p.catch==='function')p.catch(fallback);
+  });
+}
 async function speak(word){
   try{
     let src=audioCache.get(word);
     if(src===undefined){
-      const r=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(word));
+      const r=await fetchWithTimeout('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(word),2000);
       if(!r.ok)throw new Error('dictionary');
       const data=await r.json();
       const ps=(data||[]).flatMap(x=>x.phonetics||[]);
@@ -29,7 +55,8 @@ async function speak(word){
       audioCache.set(word,src);
     }
     if(src){
-      const a=new Audio(src);a.preload='auto';a.onerror=()=>tts(word);await a.play();return;
+      await playAudioOrFallback(src,word);
+      return;
     }
   }catch(e){}
   tts(word);
@@ -40,7 +67,7 @@ function makePhonetic(word,label=word){
   ph.setAttribute('aria-label',`播放 ${label} 的真人词典读音`);
   ph.title='真人词典发音优先；不可用时使用浏览器发音';
   ph.textContent=(ipa[word]||'')+' 🔊';
-  ph.addEventListener('click',ev=>{ev.stopPropagation();speak(word)});
+  ph.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();speak(word)});
   return ph;
 }
 const article=document.querySelector('.article');
