@@ -2,84 +2,37 @@
 const BUILTIN_IPA={"amplify":"/ˈæmplɪfaɪ/","breach":"/briːtʃ/","cascade":"/kæˈskeɪd/","centralized":"/ˈsentrəlaɪzd/","concentration":"/ˌkɑːnsənˈtreɪʃən/","contagion":"/kənˈteɪdʒən/","compromise":"/ˈkɑːmprəmaɪz/","confidential":"/ˌkɑːnfɪˈdenʃəl/","disruption":"/dɪsˈrʌpʃən/","emergency":"/ɪˈmɜːrdʒənsi/","fraud":"/frɔːd/","governance":"/ˈɡʌvərnəns/","hazard":"/ˈhæzərd/","inherent":"/ɪnˈhɪrənt/","interconnected":"/ˌɪntərkəˈnektɪd/","interrupt":"/ˌɪntəˈrʌpt/","malicious":"/məˈlɪʃəs/","mutual":"/ˈmjuːtʃuəl/","oversight":"/ˈoʊvərsaɪt/","protocol":"/ˈproʊtəkɔːl/","redundancy":"/rɪˈdʌndənsi/","safeguard":"/ˈseɪfɡɑːrd/","supervise":"/ˈsuːpərvaɪz/","systemic":"/sɪˈstemɪk/","transaction":"/trænˈzækʃən/","unauthorized":"/ʌnˈɔːθəraɪzd/","vulnerability":"/ˌvʌlnərəˈbɪləti/","withstand":"/wɪðˈstænd/","anomaly":"/əˈnɑːməli/","assurance":"/əˈʃʊrəns/","associate":"/əˈsoʊʃieɪt/","consecutive":"/kənˈsekjətɪv/","crisis":"/ˈkraɪsɪs/","decisive":"/dɪˈsaɪsɪv/","deficiency":"/dɪˈfɪʃənsi/","destabilize":"/diːˈsteɪbəlaɪz/","forensic":"/fəˈrenzɪk/","insurer":"/ɪnˈʃʊrər/","intermediary":"/ˌɪntərˈmiːdieri/","jurisdiction":"/ˌdʒʊrɪsˈdɪkʃən/","recovery":"/rɪˈkʌvəri/","reputation":"/ˌrepjəˈteɪʃən/","robust":"/roʊˈbʌst/","simultaneous":"/ˌsaɪməlˈteɪniəs/","suspend":"/səˈspend/","threat":"/θret/","trace":"/treɪs/","ultimate":"/ˈʌltɪmət/","violate":"/ˈvaɪəleɪt/","vigilance":"/ˈvɪdʒələns/","accountable":"/əˈkaʊntəbəl/","consensus":"/kənˈsensəs/","obligation":"/ˌɑːbləˈɡeɪʃən/","authority":"/əˈθɔːrəti/","confirm":"/kənˈfɜːrm/","agency":"/ˈeɪdʒənsi/","crucial":"/ˈkruːʃəl/","legitimate":"/lɪˈdʒɪtəmət/","verify":"/ˈverɪfaɪ/","resilience":"/rɪˈzɪliəns/","liquidity":"/lɪˈkwɪdəti/","uncertainty":"/ʌnˈsɜːrtənti/"};
 const ipa={...BUILTIN_IPA,...(window.KAOYAN_IPA||{})};
 const maps=[['new',window.KAOYAN_NEW||{}],['review',window.KAOYAN_REVIEW||{}]];
-const audioCache=new Map();
-const audioPending=new Map();
-let currentAudio=null;
+let activeUtterance=null;
 function tts(word){
   if(!('speechSynthesis' in window)) return false;
-  try{if(currentAudio){currentAudio.pause();currentAudio=null;}}catch(e){}
-  window.speechSynthesis.cancel();
-  const u=new SpeechSynthesisUtterance(word);
-  u.lang='en-US';u.rate=.82;
-  const voices=window.speechSynthesis.getVoices();
-  const v=voices.find(x=>/^en-US/i.test(x.lang))||voices.find(x=>/^en/i.test(x.lang));
-  if(v)u.voice=v;
-  window.speechSynthesis.speak(u);
-  return true;
-}
-async function resolveAudio(word){
-  if(audioCache.has(word))return audioCache.get(word);
-  if(audioPending.has(word))return audioPending.get(word);
-  const job=(async()=>{
-    try{
-      const ctrl=new AbortController();
-      const timer=setTimeout(()=>ctrl.abort(),2500);
-      const r=await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(word),{signal:ctrl.signal});
-      clearTimeout(timer);
-      if(!r.ok)throw new Error('dictionary');
-      const data=await r.json();
-      const ps=(data||[]).flatMap(x=>x.phonetics||[]);
-      const us=ps.find(x=>x.audio&&(/-us/i.test(x.audio)||/[_-]us[_./-]/i.test(x.audio)));
-      const any=ps.find(x=>x.audio);
-      let src=(us||any)?.audio||'';
-      if(src&&src.startsWith('//'))src='https:'+src;
-      audioCache.set(word,src);
-      return src;
-    }catch(e){
-      audioCache.set(word,'');
-      return '';
-    }finally{
-      audioPending.delete(word);
-    }
-  })();
-  audioPending.set(word,job);
-  return job;
-}
-function warmAudio(){
-  const words=[...new Set(maps.flatMap(([,map])=>Object.keys(map).map(w=>w.toLowerCase())))];
-  let i=0;
-  const next=()=>{
-    if(i>=words.length)return;
-    resolveAudio(words[i++]).finally(()=>setTimeout(next,40));
-  };
-  for(let n=0;n<3;n++)next();
-}
-function speak(word){
-  const src=audioCache.get(word);
-  if(src){
-    try{
-      window.speechSynthesis?.cancel();
-      if(currentAudio)currentAudio.pause();
-      const a=new Audio(src);
-      currentAudio=a;
-      a.preload='auto';
-      a.onended=()=>{if(currentAudio===a)currentAudio=null;};
-      a.onerror=()=>{if(currentAudio===a)currentAudio=null;tts(word);};
-      const p=a.play();
-      if(p&&typeof p.catch==='function')p.catch(()=>{if(currentAudio===a)currentAudio=null;tts(word);});
-      return;
-    }catch(e){tts(word);return;}
-  }
-  tts(word);
-  if(!audioCache.has(word))resolveAudio(word);
+  try{
+    const synth=window.speechSynthesis;
+    synth.cancel();
+    const u=new SpeechSynthesisUtterance(word);
+    activeUtterance=u;
+    u.lang='en-US';
+    u.rate=.82;
+    u.pitch=1;
+    u.volume=1;
+    const voices=synth.getVoices();
+    const v=voices.find(x=>/^en-US/i.test(x.lang))||voices.find(x=>/^en/i.test(x.lang));
+    if(v)u.voice=v;
+    u.onend=u.onerror=()=>{if(activeUtterance===u)activeUtterance=null;};
+    synth.speak(u);
+    return true;
+  }catch(e){return false;}
 }
 function makePhonetic(word,label=word){
   const ph=document.createElement('button');
   ph.type='button';ph.className='phonetic';ph.dataset.speak=word;
   ph.setAttribute('aria-label',`播放 ${label} 的发音`);
-  ph.title='真人词典音频已就绪时优先播放；否则立即使用 Chrome 美式发音';
+  ph.title='点击后直接使用 Chrome 美式英语发音';
   ph.textContent=(ipa[word]||'')+' 🔊';
-  ph.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();speak(word)});
+  ph.addEventListener('click',ev=>{
+    ev.preventDefault();
+    ev.stopPropagation();
+    tts(word);
+  },{passive:false});
   return ph;
 }
 const article=document.querySelector('.article');
@@ -148,7 +101,7 @@ updateCounters();
 const info=document.getElementById('newCount')?.closest('.card');
 if(info&&!document.getElementById('chromeTtsTest')){
   const btn=document.createElement('button');
-  btn.type='button';btn.id='chromeTtsTest';btn.className='btn';btn.textContent='🔊 测试 Chrome 发音';btn.title='强制使用浏览器 Web Speech API，不调用真人词典音频';
+  btn.type='button';btn.id='chromeTtsTest';btn.className='btn';btn.textContent='🔊 测试 Chrome 发音';btn.title='使用与单词音标按钮完全相同的 Web Speech API';
   const status=document.createElement('span');status.id='chromeTtsStatus';status.className='muted';status.style.marginLeft='8px';
   btn.addEventListener('click',()=>{
     if(tts('systemic')){status.textContent='正在用浏览器语音朗读：systemic';setTimeout(()=>{status.textContent='';},3500);}
@@ -156,6 +109,9 @@ if(info&&!document.getElementById('chromeTtsTest')){
   });
   info.append(document.createElement('br'),btn,status);
 }
-warmAudio();
+if('speechSynthesis' in window){
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.addEventListener?.('voiceschanged',()=>window.speechSynthesis.getVoices(),{once:true});
+}
 document.getElementById('topBtn')?.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}));
 })();
