@@ -1,0 +1,68 @@
+name: Sync vocab log
+
+on:
+  push:
+    paths:
+      - 'days/*.html'
+      - '.github/workflows/sync-vocab-log.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update vocab log from latest daily page
+        run: |
+          python - <<'PY'
+          import json, re
+          from pathlib import Path
+          from datetime import date
+
+          pages = sorted(Path('days').glob('20??-??-??.html'))
+          if not pages:
+              raise SystemExit('No daily pages found')
+          page = pages[-1]
+          day = page.stem
+          text = page.read_text(encoding='utf-8')
+          m_new = re.search(r'window\.KAOYAN_NEW=(\{.*?\});window\.KAOYAN_REVIEW=', text)
+          m_rev = re.search(r'window\.KAOYAN_REVIEW=(\{.*?\});window\.KAOYAN_IPA=', text)
+          if not (m_new and m_rev):
+              raise SystemExit(f'Could not parse vocab maps from {page}')
+          new_map = json.loads(m_new.group(1))
+          review_map = json.loads(m_rev.group(1))
+
+          log_path = Path('data/vocab-log.json')
+          data = json.loads(log_path.read_text(encoding='utf-8'))
+          days = data.setdefault('days', {})
+          current = date.fromisoformat(day)
+          stages = {}
+          for word in review_map:
+              first = None
+              for d, entry in sorted(days.items()):
+                  if word in entry.get('new', []):
+                      first = date.fromisoformat(d)
+                      break
+              if first:
+                  delta = (current - first).days
+                  stages[word] = delta if delta in data.get('schedule_days', []) else delta
+              else:
+                  stages[word] = 0
+          days[day] = {'new': list(new_map.keys()), 'review': stages}
+          log_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(f'Synced {day}: {len(new_map)} new, {len(review_map)} review')
+          PY
+      - name: Commit vocab log
+        run: |
+          if git diff --quiet -- data/vocab-log.json; then
+            echo 'No vocab-log changes'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/vocab-log.json
+          git commit -m 'Sync vocabulary log from latest daily page'
+          git push
