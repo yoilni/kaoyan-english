@@ -28,7 +28,7 @@
     </div>
 
     <div class="metric-grid">
-      <div class="metric"><span>今日新词</span><strong id="dashToday">0/50</strong><div class="progress-track"><i id="dashTodayBar"></i></div></div>
+      <div class="metric"><span id="dashTodayLabel">今日新词</span><strong id="dashToday">0/50</strong><div class="progress-track"><i id="dashTodayBar"></i></div></div>
       <div class="metric"><span>连续学习</span><strong id="dashStreak">0 天</strong><small>有实际学习操作才计入</small></div>
       <div class="metric"><span>累计接触词汇</span><strong id="dashWords">0</strong><small>至少发生过一次学习操作</small></div>
       <div class="metric"><span>已标记掌握</span><strong id="dashMastered">0</strong><small>文章中长按单词标记</small></div>
@@ -94,5 +94,30 @@
   </section>
 </main>
 <script src="app.js"></script>
+<script>
+(()=>{
+  const KEY='kaoyan_progress_v1';
+  const localDateKey=(date=new Date())=>{const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return `${y}-${m}-${d}`;};
+  const metrics=d=>{const words=Object.values(d?.words||{});return {viewedNew:words.filter(w=>w.type==='new'&&(w.meaningClicks||0)>0).length,active:words.some(w=>(w.meaningClicks||0)+(w.audioClicks||0)>0)||Object.values(d?.translations||{}).some(t=>(t.opens||0)>0)};};
+  function renderLatestProgress(){
+    let store={days:{}};try{const raw=JSON.parse(localStorage.getItem(KEY)||'null');if(raw?.days)store=raw;}catch(e){}
+    const today=localDateKey(), days=store.days||{};
+    const validDates=Object.keys(days).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)&&days[k]).sort();
+    let shown=today;
+    if(!days[today]) shown=validDates.length?validDates[validDates.length-1]:today;
+    const d=days[shown], m=metrics(d), total=d?.totalNew||50;
+    const value=document.getElementById('dashToday'), bar=document.getElementById('dashTodayBar'), label=document.getElementById('dashTodayLabel');
+    if(value)value.textContent=`${m.viewedNew}/${total}`;
+    if(bar)bar.style.width=`${total?Math.min(100,Math.round(m.viewedNew/total*100)):0}%`;
+    if(label){
+      if(shown===today) label.textContent='今日新词';
+      else if(d) label.textContent=`${shown.slice(5)} 新词进度`;
+      else label.textContent='暂无学习记录';
+    }
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(renderLatestProgress,0),{once:true});else setTimeout(renderLatestProgress,0);
+  window.addEventListener('storage',renderLatestProgress);
+})();
+</script>
 </body>
 </html>
