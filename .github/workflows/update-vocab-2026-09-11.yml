@@ -1,0 +1,33 @@
+name: One-time vocab log update 2026-09-11
+on:
+  push:
+    paths:
+      - '.github/workflows/update-vocab-2026-09-11.yml'
+permissions:
+  contents: write
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update vocab log
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('data/vocab-log.json')
+          data=json.loads(p.read_text())
+          data.setdefault('days',{})['2026-09-11']={
+            'new':['copyright','creator','musician','artist','catalog','permission','derivative','originality','authenticity','remix','publisher','songwriter','composition','synthetic','generative','dataset','input','imitate','resemblance','likeness','reward','value','exclusive','original','reproduce','archive','historical','discovery','payment','fee','contractual','membership','independent','studio','brand','fan','deal','clause','usage','prompt','instruction','sample','style','genre','melody','rhythm','vocal','compose','edit','collaborate'],
+            'review':{'adoption':1,'fragility':1,'diffusion':1,'beneficial':1,'agreement':2,'operator':2,'project':2,'resource':2,'transparency':4,'responsibility':4,'privacy':4,'verification':4,'ecosystem':7,'participant':7,'intellectual':7,'partnership':7,'relevant':15,'verify':15,'outcome':15,'underlying':15}
+          }
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Commit update and remove one-time workflow
+        run: |
+          git config user.name 'kaoyan-english-bot'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/update-vocab-2026-09-11.yml
+          git add data/vocab-log.json
+          git commit -m 'Update vocab log for 2026-09-11'
+          git push
