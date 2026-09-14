@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-14",
+  "new": ["appreciation","revaluation","devaluation","repatriation","remittance","convertibility","denomination","settlement","receivable","payable","counterparty","arbitrage","offshore","onshore","forward","swap","collateral","treasury","notional","turnover","invoice","invoicing","translation","unrealized","realized","discretion","directive","insulate","exacerbate","compress","squeeze","propensity","advisory","sophistication","literacy","calculus","dilemma","contend","entrench","transitory","pronounced","discernible","reconfigure","divert","reorientation","residual","friction","granular","procyclical","countercyclical"],
+  "review": {
+    "enforceable": 1,
+    "proprietary": 1,
+    "statutory": 1,
+    "remuneration": 1,
+    "stringent": 2,
+    "scrutiny": 2,
+    "trajectory": 2,
+    "parity": 2,
+    "financial": 4,
+    "structural": 4,
+    "concentrated": 4,
+    "unclear": 4,
+    "transparency": 7,
+    "predictability": 7,
+    "monitoring": 7,
+    "responsibility": 7,
+    "equilibrium": 15,
+    "restrain": 15,
+    "steady": 15,
+    "signal": 15
+  }
+}
