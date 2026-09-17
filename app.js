@@ -26,6 +26,16 @@ function injectTranslations(article,translations){if(!article||!Array.isArray(tr
 async function loadTranslations(article){const inline=Array.isArray(window.KAOYAN_TRANSLATIONS)?window.KAOYAN_TRANSLATIONS:[];if(inline.length){injectTranslations(article,inline);return;}const m=location.pathname.match(/(\d{4}-\d{2}-\d{2})\.html$/);if(!m)return;try{const r=await fetch(`../data/translations/${m[1]}.json`,{cache:'no-store'});if(r.ok)injectTranslations(article,await r.json());}catch(e){}}
 const article=document.querySelector('.article');
 if(article){const all={};maps.forEach(([type,map])=>Object.entries(map).forEach(([w,zh])=>all[w.toLowerCase()]={type,zh}));const keys=Object.keys(all).sort((a,b)=>b.length-a.length);if(keys.length){const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),re=new RegExp('\\b('+keys.map(esc).join('|')+')\\b','gi');const walker=document.createTreeWalker(article,NodeFilter.SHOW_TEXT),nodes=[];while(walker.nextNode())if(!walker.currentNode.parentElement.closest('button,script,style'))nodes.push(walker.currentNode);nodes.forEach(node=>{const text=node.nodeValue;if(!re.test(text)){re.lastIndex=0;return;}re.lastIndex=0;const frag=document.createDocumentFragment();let last=0;text.replace(re,(match,_,offset)=>{frag.append(text.slice(last,offset));const key=match.toLowerCase(),d=all[key];const b=document.createElement('button');b.className='word'+(d.type==='review'?' review':'');b.dataset.word=key;b.dataset.type=d.type;b.append(document.createTextNode(match));const s=document.createElement('span');s.textContent=`（${d.zh}）`;b.append(s);frag.append(b);frag.append(makePhonetic(key,match));last=offset+match.length;return match;});frag.append(text.slice(last));node.replaceWith(frag);});}loadTranslations(article);}
+function installBackToTop(){
+  if(document.getElementById('backToTop'))return;
+  const btn=document.createElement('button');
+  btn.id='backToTop';btn.type='button';btn.textContent='↑ 回到顶部';btn.setAttribute('aria-label','回到页面顶部');
+  Object.assign(btn.style,{position:'fixed',right:'16px',bottom:'74px',zIndex:'9998',border:'0',borderRadius:'999px',padding:'10px 14px',fontSize:'14px',fontWeight:'700',cursor:'pointer',boxShadow:'0 5px 20px rgba(0,0,0,.18)',background:'#fff',color:'#1f6feb',opacity:'0',pointerEvents:'none',transform:'translateY(8px)',transition:'opacity .18s ease,transform .18s ease'});
+  const update=()=>{const show=window.scrollY>500;btn.style.opacity=show?'1':'0';btn.style.pointerEvents=show?'auto':'none';btn.style.transform=show?'translateY(0)':'translateY(8px)';};
+  btn.addEventListener('click',()=>{const top=document.getElementById('top');if(top){try{top.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){window.scrollTo(0,0);}}else window.scrollTo({top:0,behavior:'smooth'});});
+  window.addEventListener('scroll',update,{passive:true});document.body.append(btn);update();
+}
+installBackToTop();
 let returnToListTimer=null,returnToListBtn=null;
 function showReturnToListButton(returnTarget){
   if(returnToListTimer){clearTimeout(returnToListTimer);returnToListTimer=null;}
