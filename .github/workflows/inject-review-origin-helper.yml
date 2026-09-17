@@ -1,0 +1,22 @@
+name: Inject review origin helper
+on:
+  push:
+    paths:
+      - '.github/workflows/inject-review-origin-helper.yml'
+permissions:
+  contents: write
+jobs:
+  inject:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inject helper
+        run: |
+          python3 -c "from pathlib import Path; p=Path('days/2026-09-16.html'); s=p.read_text(); old='<script src=\"../app.js?v=20260917-trace1\"></script>'; new=old+'<script src=\"../review-origin.js?v=20260917-1\"></script>'; assert old in s; p.write_text(s if 'review-origin.js' in s else s.replace(old,new,1))"
+      - name: Commit
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add days/2026-09-16.html
+          git commit -m "Enable Sep 16 review origin tracing" || exit 0
+          git push
