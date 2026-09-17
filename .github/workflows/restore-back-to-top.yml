@@ -1,0 +1,49 @@
+name: Restore back-to-top button
+on:
+  push:
+    paths:
+      - '.github/workflows/restore-back-to-top.yml'
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore global button and document contract
+        shell: python
+        run: |
+          from pathlib import Path
+          app=Path('app.js')
+          s=app.read_text()
+          marker='let returnToListTimer=null,returnToListBtn=null;'
+          code="""function installBackToTop(){
+            if(document.getElementById('backToTop'))return;
+            const btn=document.createElement('button');
+            btn.id='backToTop';btn.type='button';btn.textContent='↑ 回到顶部';btn.setAttribute('aria-label','回到页面顶部');
+            Object.assign(btn.style,{position:'fixed',right:'16px',bottom:'74px',zIndex:'9998',border:'0',borderRadius:'999px',padding:'10px 14px',fontSize:'14px',fontWeight:'700',cursor:'pointer',boxShadow:'0 5px 20px rgba(0,0,0,.18)',background:'#fff',color:'#1f6feb',opacity:'0',pointerEvents:'none',transform:'translateY(8px)',transition:'opacity .18s ease,transform .18s ease'});
+            const update=()=>{const show=window.scrollY>500;btn.style.opacity=show?'1':'0';btn.style.pointerEvents=show?'auto':'none';btn.style.transform=show?'translateY(0)':'translateY(8px)';};
+            btn.addEventListener('click',()=>{const top=document.getElementById('top');if(top){try{top.scrollIntoView({behavior:'smooth',block:'start'});}catch(e){window.scrollTo(0,0);}}else window.scrollTo({top:0,behavior:'smooth'});});
+            window.addEventListener('scroll',update,{passive:true});document.body.append(btn);update();
+          }
+          installBackToTop();
+          """
+          if 'function installBackToTop()' not in s:
+            if marker not in s: raise SystemExit('safe marker missing')
+            s=s.replace(marker,code+marker,1)
+            app.write_text(s)
+
+          r=Path('README.md');t=r.read_text()
+          if '回到顶部' not in t:
+            needle='- **正文 → 文末词表的10秒返回按钮。**\n'
+            t=t.replace(needle,needle+'- **全站浮动“↑ 回到顶部”按钮**：页面向下滚动约500px后出现，点击平滑返回 `#top`；必须与“↩ 返回单词列表”同时存在，不能互相覆盖。\n')
+            check='- [ ] 跳转正文后出现“↩ 返回单词列表”，可返回原词卡\n'
+            t=t.replace(check,check+'- [ ] 页面下滚后出现“↑ 回到顶部”，点击可平滑返回顶部，且不遮挡“↩ 返回单词列表”\n')
+            r.write_text(t)
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app.js README.md
+          git commit -m "Restore global back-to-top button" || exit 0
+          git push
