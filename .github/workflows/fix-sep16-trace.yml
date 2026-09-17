@@ -1,0 +1,39 @@
+name: Fix Sep 16 vocab trace cache
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-sep16-trace.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump Sep 16 app cache key
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('days/2026-09-16.html')
+          s = p.read_text(encoding='utf-8')
+          old = '../app.js?v=20260916-1'
+          new = '../app.js?v=20260917-trace1'
+          if new in s:
+              print('Already patched')
+          elif old in s:
+              p.write_text(s.replace(old, new), encoding='utf-8')
+              print('Patched app.js cache key')
+          else:
+              raise SystemExit('Expected Sep 16 app.js reference not found; refusing broad rewrite')
+          PY
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add days/2026-09-16.html
+          git commit -m 'Fix Sep 16 vocab trace cache'
+          git push
