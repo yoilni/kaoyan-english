@@ -32,15 +32,19 @@ jobs:
           m_rev = re.search(r'window\.KAOYAN_REVIEW=(\{.*?\});window\.KAOYAN_IPA=', text)
           if not (m_new and m_rev):
               raise SystemExit(f'Could not parse vocab maps from {page}')
-          new_map = json.loads(m_new.group(1))
-          review_map = json.loads(m_rev.group(1))
+          new_data = json.loads(m_new.group(1))
+          review_data = json.loads(m_rev.group(1))
+          new_words = list(new_data.keys()) if isinstance(new_data, dict) else list(new_data)
+          review_words = list(review_data.keys()) if isinstance(review_data, dict) else list(review_data)
+          if not all(isinstance(word, str) and word.strip() for word in new_words + review_words):
+              raise SystemExit(f'Invalid vocab data in {page}')
 
           log_path = Path('data/vocab-log.json')
           data = json.loads(log_path.read_text(encoding='utf-8'))
           days = data.setdefault('days', {})
           current = date.fromisoformat(day)
           stages = {}
-          for word in review_map:
+          for word in review_words:
               first = None
               for d, entry in sorted(days.items()):
                   if word in entry.get('new', []):
@@ -51,9 +55,9 @@ jobs:
                   stages[word] = delta if delta in data.get('schedule_days', []) else delta
               else:
                   stages[word] = 0
-          days[day] = {'new': list(new_map.keys()), 'review': stages}
+          days[day] = {'new': new_words, 'review': stages}
           log_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          print(f'Synced {day}: {len(new_map)} new, {len(review_map)} review')
+          print(f'Synced {day}: {len(new_words)} new, {len(review_words)} review')
           PY
       - name: Commit vocab log
         run: |
