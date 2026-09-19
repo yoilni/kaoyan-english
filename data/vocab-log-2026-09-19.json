@@ -1,0 +1,7 @@
+{
+  "date":"2026-09-19",
+  "new":["municipality","zoning","ordinance","moratorium","ratepayer","surcharge","megawatt","substation","turbine","geothermal","combustion","groundwater","potable","wastewater","reclamation","evaporation","thermal","habitat","brownfield","greenfield","siting","queue","easement","parcel","rezoning","stakeholder","opposition","nuisance","diesel","generator","contentious","equitable","localized","ancillary","prospective","procedural","consultation","grievance","concession","nondisclosure","secrecy","municipal","levy","exemption","rebate","distributive","tax-base","property-tax","curtail","amenity"],
+  "review":{"endorsement":1,"sponsorship":1,"visibility":1,"monetization":1,"boundary":1,"oversight":1,"architecture":2,"bandwidth":2,"latency":2,"capital":2,"imbalance":4,"bottleneck":4,"inequality":4,"sentiment":4,"scrutiny":7,"mitigation":7,"infrastructure":15,"ecosystem":15,"constraint":30,"transparent":30},
+  "mastered_excluded":[],
+  "mastered_snapshot_status":"Supabase query unavailable in this automation run; no browser localStorage was read."
+}
