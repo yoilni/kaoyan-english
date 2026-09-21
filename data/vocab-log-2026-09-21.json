@@ -1,0 +1,7 @@
+{
+  "date":"2026-09-21",
+  "new":["revision","rebound","upswing","impetus","buoyancy","stagnation","underperform","outperform","outstrip","dampen","falter","tepid","robustness","headcount","protectionism","tariff","exporter","importer","stockpiling","normalization","disinflation","budgetary","underinvestment","deindustrialization","bureaucracy","streamline","revitalize","rejuvenation","crowding-out","fiscal-space","capital-formation","underutilization","output-gap","cyclical","downside","upside","baseline","forecasting","recalibrate","self-sustaining","purchasing-power","real-income","competitiveness-gap","energy-intensive","labor-saving","productivity-enhancing","earmarking","chokepoint","longevity","readjustment"],
+  "review":{"proliferation":1,"prerequisite":1,"diffusion":1,"spillover":1,"municipality":2,"ratepayer":2,"zoning":2,"equitable":2,"architecture":4,"capital":4,"adoption":4,"performance":4,"appreciation":7,"discretion":7,"friction":7,"reconfigure":7,"recapitalization":15,"productive":15,"supervision":15,"backstop":15,"preserve":30,"undermine":30,"negotiate":30,"credible":30},
+  "mastered_excluded":[],
+  "mastered_snapshot_status":"Supabase public.mastered_words queried successfully before generation; latest snapshot contained zero rows. Browser localStorage was not read."
+}
