@@ -28,8 +28,8 @@ jobs:
           page = pages[-1]
           day = page.stem
           text = page.read_text(encoding='utf-8')
-          m_new = re.search(r'window\.KAOYAN_NEW=(\{.*?\});window\.KAOYAN_REVIEW=', text)
-          m_rev = re.search(r'window\.KAOYAN_REVIEW=(\{.*?\});window\.KAOYAN_IPA=', text)
+          m_new = re.search(r'window\.KAOYAN_NEW\s*=\s*(\{.*?\})\s*;', text, re.S)
+          m_rev = re.search(r'window\.KAOYAN_REVIEW\s*=\s*(\{.*?\})\s*;', text, re.S)
           if not (m_new and m_rev):
               raise SystemExit(f'Could not parse vocab maps from {page}')
           new_data = json.loads(m_new.group(1))
