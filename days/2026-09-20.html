@@ -46,4 +46,4 @@ P.forEach((x,i)=>{
 function card(w,m){return `<div class="vcard"><button class="wordlink" onclick="traceWordToArticle&&traceWordToArticle('${w}',this.closest('.vcard'))">${w}</button><div class="ipa">${window.KAOYAN_IPA[w]||''} <button onclick="speechSynthesis.cancel();speechSynthesis.speak(Object.assign(new SpeechSynthesisUtterance('${w}'),{lang:'en-US'}))">🔊</button></div><div>${m}</div></div>`}
 document.getElementById('newGrid').innerHTML=Object.entries(window.KAOYAN_NEW).map(([w,m])=>card(w,m)).join('');
 document.getElementById('reviewGrid').innerHTML=Object.entries(window.KAOYAN_REVIEW).map(([w,m])=>card(w,m)).join('');
-</script><script src="../app.js?v=20260922-history-all-2"></script><script src="../review-origin.js?v=20260918-1"></script><script src="../sync.js?v=20260922-unmaster-fix1"></script></body></html>
+</script><script src="../app.js?v=20260922-longpress-fix2"></script><script src="../review-origin.js?v=20260918-1"></script><script src="../sync.js?v=20260922-longpress-fix2"></script></body></html>
