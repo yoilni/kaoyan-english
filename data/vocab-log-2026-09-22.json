@@ -1,0 +1,7 @@
+{
+  "date":"2026-09-22",
+  "new":["marquee","foothold","incumbent","saturation","diversification","adjacency","aspirational","cachet","salience","premiumization","athleisure","segmentation","crossover","fanbase","fandom","allegiance","wholesale","direct-to-consumer","storefront","shelf-space","sell-through","markdown","cannibalization","assortment","inventory-turnover","unit-economics","gross-margin","price-point","elasticity","willingness-to-pay","customer-acquisition","lifetime-value","brand-equity","mindshare","sponsorship-activation","signature-line","product-seeding","scarcity","exclusivity","rollout","localization","distribution-footprint","channel-conflict","market-entry","brand-extension","category-expansion","revenue-mix","payback-period","break-even","addressable-market"],
+  "review":{"revision":1,"rebound":1,"impetus":1,"dampen":1,"proliferation":2,"prerequisite":2,"diffusion":2,"spillover":2,"monetization":4,"visibility":4,"oversight":4,"curation":4,"imbalance":7,"divergence":7,"sluggish":7,"headwind":7,"sovereignty":15,"legitimacy":15,"verification":15,"participation":15,"benchmark":30,"capability":30,"reliability":30,"strategic":30},
+  "mastered_excluded":["productive","negotiate","architecture","capital","adoption","exporter","importer"],
+  "mastered_snapshot_status":"Supabase public.mastered_words queried successfully before generation; browser localStorage was not read."
+}
