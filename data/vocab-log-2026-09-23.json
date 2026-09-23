@@ -1,0 +1,7 @@
+{
+  "date":"2026-09-23",
+  "new":["pervasive","unobtrusive","conspicuous","surveillance","consent","inadvertent","discreet","biometric","ambient","retention","deletion","anonymize","identifiable","confidentiality","autonomy","recourse","liability","negligence","compliance","precaution","proportionality","interoperability","authentication","encryption","impersonation","deception","provenance","traceability","auditability","redress","intrusive","wearable","sensor","leakage","harvest","corroborate","tamper","spoof","adversarial","synthetic","revocable","permission","custody","granular","profiling","pseudonymize","minimization","indicator","bystander","deterrent"],
+  "review":{"marquee":1,"foothold":1,"elasticity":1,"scarcity":1,"revision":2,"rebound":2,"dampen":2,"impetus":2,"municipality":4,"consultation":4,"equitable":4,"curtail":4,"electrification":7,"constraint":7,"affordability":7,"coordination":7,"workload":15,"rehabilitation":15,"readiness":15,"recurrence":15,"resilience":30,"liquidity":30,"prudent":30,"uncertainty":30},
+  "mastered_excluded":[],
+  "mastered_snapshot_status":"Supabase public.mastered_words query was attempted before generation but was blocked by the available connector safety check; no browser localStorage was read."
+}
