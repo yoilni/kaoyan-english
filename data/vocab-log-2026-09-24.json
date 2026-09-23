@@ -1,0 +1,7 @@
+{
+  "date":"2026-09-24",
+  "new":["settlement","ledger","tokenization","collateral","clearing","finality","counterparty","redemption","denomination","fungible","immutable","reconciliation","netting","escrow","intermediary","disintermediation","atomicity","programmability","digitization","dematerialization","securitization","registry","entitlement","remittance","intraday","fragmentation","harmonization","jurisdiction","supervisory","prudential","issuer","holder","redeemable","parity","contagion","safeguard","equivalence","collateralization","haircut","encumbrance","operationalize","legacy","bridge","rails","convergence","custodian","fiduciary","novation","permissioned","intermediation"],
+  "review":{"pervasive":1,"consent":1,"autonomy":1,"compliance":1,"marquee":2,"foothold":2,"elasticity":2,"scarcity":2,"proliferation":4,"prerequisite":4,"diffusion":4,"spillover":4,"latency":7,"throughput":7,"migration":7,"capital":7,"energy":15,"grid":15,"reliable":15,"competition":15,"audience":30,"consumer":30,"platform":30,"subscription":30},
+  "mastered_excluded":[],
+  "mastered_snapshot_status":"Supabase public.mastered_words read was attempted before generation but was blocked by the available connector safety check; browser localStorage was not read."
+}
