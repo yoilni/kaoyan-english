@@ -1,0 +1,1 @@
+Object.assign(window.KAOYAN_NEW,{"positioning":"定位","differentiation":"差异化","proposition":"主张；价值方案","acquisition":"获取；收购","lifetime":"整个使用期","retail":"零售","manufacturing":"制造","filament":"细丝","iteration":"迭代","tailor":"定制；使适合"});
