@@ -1,0 +1,1 @@
+window.KAOYAN_NEW={"challenger":"挑战者","encroach":"逐步侵占","stronghold":"牢固阵地","perception":"看法；感知","apparel":"服装","footwear":"鞋类","aspire":"渴望；追求","entrant":"新进入者","halo":"光环","resonance":"共鸣"};
