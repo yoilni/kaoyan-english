@@ -1,0 +1,1 @@
+Object.assign(window.KAOYAN_NEW,{"lightweight":"轻量的","incur":"承担；招致","upfront":"前期的","switching":"转换","affinity":"亲和力；偏好","cultural":"文化的","relevance":"相关性","credibility":"可信度","emulate":"效仿","translate":"转化；翻译"});
