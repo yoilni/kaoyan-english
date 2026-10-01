@@ -2349,7 +2349,20 @@
         "entail",
         "rationale"
       ],
-      "review": {}
+      "review": {
+        "tokenization": 0,
+        "collateral": 17,
+        "finality": 0,
+        "counterparty": 17,
+        "redemption": 0,
+        "reconciliation": 0,
+        "fragmentation": 26,
+        "harmonization": 0,
+        "jurisdiction": 31,
+        "prudential": 25,
+        "contagion": 31,
+        "safeguard": 31
+      }
     }
   }
 }
