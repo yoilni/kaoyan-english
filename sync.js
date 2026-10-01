@@ -19,10 +19,17 @@ let timer=null,target=null,startX=0,startY=0,suppressClickUntil=0;
 const clear=()=>{if(timer)clearTimeout(timer);timer=null;target=null};
 const fire=()=>{const cur=target;if(!cur)return;timer=null;target=null;suppressClickUntil=Date.now()+900;toggleMasteredElement(cur)};
 const start=(w,x,y)=>{clear();target=w;startX=x;startY=y;timer=setTimeout(fire,520)};
+if(window.PointerEvent){
 document.addEventListener('pointerdown',e=>{const w=e.target.closest?.('.word');if(w)start(w,e.clientX,e.clientY)},{passive:true});
 document.addEventListener('pointermove',e=>{if(timer&&Math.hypot(e.clientX-startX,e.clientY-startY)>24)clear()},{passive:true});
 document.addEventListener('pointerup',clear,{passive:true});
 document.addEventListener('pointercancel',clear,{passive:true});
+}else{
+document.addEventListener('touchstart',e=>{const w=e.target.closest?.('.word'),t=e.touches&&e.touches[0];if(w&&t)start(w,t.clientX,t.clientY)},{passive:true});
+document.addEventListener('touchmove',e=>{const t=e.touches&&e.touches[0];if(timer&&t&&Math.hypot(t.clientX-startX,t.clientY-startY)>24)clear()},{passive:true});
+document.addEventListener('touchend',clear,{passive:true});
+document.addEventListener('touchcancel',clear,{passive:true});
+}
 document.addEventListener('contextmenu',e=>{if(e.target.closest?.('.word'))e.preventDefault()});
 document.addEventListener('click',e=>{if(Date.now()<suppressClickUntil&&e.target.closest?.('.word')){e.preventDefault();e.stopImmediatePropagation()}},true);
 }
