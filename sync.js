@@ -1,29 +1,61 @@
 (()=>{
+if(window.__kaoyanSyncInstalled)return;
+window.__kaoyanSyncInstalled=true;
 const U='https://ohqrbosdqihgbjslbvkt.supabase.co',K='sb_publishable_06TFKhOUzSZy_JgHZD5lEg_vfaApiqc',MK='kaoyan_mastered_v1',SK='kaoyan_supabase_session_v1',PK='kaoyan_mastered_pending_v1',TOTAL=5500;
-let session=null,user=null; const norm=w=>String(w||'').trim().toLowerCase();
+let session=null,user=null,syncTask=null,revision=0; const norm=w=>String(w||'').trim().toLowerCase();
 const localSet=()=>{try{return new Set(JSON.parse(localStorage.getItem(MK)||'[]').map(norm).filter(Boolean))}catch{return new Set}};
 const pending=()=>{try{return JSON.parse(localStorage.getItem(PK)||'{}')||{}}catch{return {}}};
-function setPending(word,on){const p=pending();p[word]=!!on;localStorage.setItem(PK,JSON.stringify(p))}
+function setPending(word,on){revision++;const p=pending();p[word]=!!on;localStorage.setItem(PK,JSON.stringify(p))}
 function clearPending(word,on){const p=pending();if(p[word]===!!on){delete p[word];localStorage.setItem(PK,JSON.stringify(p))}}
-function saveLocal(s){localStorage.setItem(MK,JSON.stringify([...s].sort()));refresh(s)}
+function saveLocal(s){localStorage.setItem(MK,JSON.stringify([...s].sort()));refresh(s);window.dispatchEvent(new Event('kaoyan:mastered-changed'))}
 function refresh(s=localSet()){document.querySelectorAll('.word').forEach(e=>e.classList.toggle('mastered',s.has(norm(e.dataset.word||e.childNodes[0]?.textContent||e.textContent))));const n=s.size,p=Math.min(100,n/TOTAL*100);[['dashMastered',n],['masteredTotal',n+' / '+TOTAL],['masteredPercent',p.toFixed(1)+'%']].forEach(([id,v])=>{const e=document.getElementById(id);if(e)e.textContent=v});const b=document.getElementById('masteredBar');if(b)b.style.width=p+'%'}
 function status(x){const e=document.getElementById('syncStatus');if(e)e.textContent=x}
 function headers(auth=false,extra={}){const h={'apikey':K,'Content-Type':'application/json',...extra};if(auth&&session?.access_token)h.Authorization='Bearer '+session.access_token;return h}
-async function req(path,opt={}){const r=await fetch(U+path,opt);let d=null;try{d=await r.json()}catch{}if(!r.ok)throw new Error(d?.msg||d?.message||d?.error_description||('HTTP '+r.status));return d}
-function storeSession(s){session=s||null;user=s?.user||null;if(s)localStorage.setItem(SK,JSON.stringify(s));else localStorage.removeItem(SK);authUI()}
-async function restore(){try{session=JSON.parse(localStorage.getItem(SK)||'null')}catch{session=null}if(!session?.access_token)return storeSession(null);try{const u=await req('/auth/v1/user',{headers:headers(true)});user=u;session.user=u;localStorage.setItem(SK,JSON.stringify(session));authUI()}catch{if(session?.refresh_token){try{const s=await req('/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:headers(false),body:JSON.stringify({refresh_token:session.refresh_token})});storeSession(s);return}catch{}}storeSession(null)}}
-function captureMagicLink(){const h=new URLSearchParams(location.hash.slice(1));if(h.get('access_token')){storeSession({access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),expires_in:Number(h.get('expires_in')||3600),user:null});history.replaceState(null,'',location.pathname+location.search);restore()}}
+async function req(path,opt={},retried=false){const r=await fetch(U+path,{...opt,signal:AbortSignal.timeout(15000)});let d=null;try{d=await r.json()}catch{}if(r.status===401&&path.startsWith('/rest/')&&!retried){await restore();if(user)return req(path,{...opt,headers:headers(true,opt.headers?.Prefer?{Prefer:opt.headers.Prefer}:{})},true)}if(!r.ok){const e=new Error(d?.msg||d?.message||d?.error_description||('HTTP '+r.status));e.status=r.status;throw e;}return d}
+function storeSession(s){revision++;session=s||null;user=s?.user||null;if(s)localStorage.setItem(SK,JSON.stringify(s));else localStorage.removeItem(SK);authUI()}
+async function restore(){try{session=JSON.parse(localStorage.getItem(SK)||'null')}catch{session=null}if(!session?.access_token)return storeSession(null);try{const u=await req('/auth/v1/user',{headers:headers(true)});user=u;session.user=u;localStorage.setItem(SK,JSON.stringify(session));authUI()}catch(e){if(![401,403].includes(e.status)){user=session?.user||null;authUI();return}if(session?.refresh_token){try{const s=await req('/auth/v1/token?grant_type=refresh_token',{method:'POST',headers:headers(false),body:JSON.stringify({refresh_token:session.refresh_token})});storeSession(s);return}catch(e){if(![400,401,403].includes(e.status)){user=session?.user||null;authUI();return}}}storeSession(null)}}
 async function sendMagic(email){const redirect='https://yoilni.github.io/kaoyan-english/';await req('/auth/v1/otp?redirect_to='+encodeURIComponent(redirect),{method:'POST',headers:headers(false),body:JSON.stringify({email,create_user:true,gotrue_meta_security:{}})})}
-async function mergeCloud(){if(!user)return;const rows=await req('/rest/v1/mastered_words?select=word&user_id=eq.'+encodeURIComponent(user.id),{headers:headers(true)});const merged=new Set((rows||[]).map(x=>norm(x.word))),p=pending();Object.entries(p).forEach(([w,on])=>on?merged.add(norm(w)):merged.delete(norm(w)));saveLocal(merged);status('已同步 · '+merged.size+' 个掌握词')}
+async function mergeCloud(){
+ if(!user)return;
+ if(syncTask)return syncTask;
+ const owner=user.id;
+ const run=async()=>{
+  // One writer per tab. Keep deletions pending until the server acknowledges them.
+  while(user?.id===owner){
+   for(const [word,on] of Object.entries(pending())){
+    if(user?.id!==owner)return;
+    await setCloud(word,on);clearPending(word,on);
+   }
+   const before=revision, rows=[];
+   for(let offset=0;;offset+=500){
+    const batch=await req('/rest/v1/mastered_words?select=word&order=word.asc&limit=500&offset='+offset+'&user_id=eq.'+encodeURIComponent(owner),{headers:headers(true)});
+    rows.push(...(batch||[]));if(!batch||batch.length<500)break;
+   }
+   if(user?.id!==owner)return;
+   if(before!==revision||Object.keys(pending()).length)continue;
+   saveLocal(new Set(rows.map(x=>norm(x.word))));
+   status('已同步 · '+localSet().size+' 个掌握词');return;
+  }
+ };
+ const locked=()=>navigator.locks?navigator.locks.request('kaoyan-mastered-sync',run):run();
+ syncTask=locked().finally(()=>{syncTask=null});return syncTask;
+}
 async function setCloud(word,on){if(!user)return;if(on)await req('/rest/v1/mastered_words?on_conflict=user_id,word',{method:'POST',headers:headers(true,{'Prefer':'resolution=merge-duplicates'}),body:JSON.stringify({user_id:user.id,word})});else await req('/rest/v1/mastered_words?user_id=eq.'+encodeURIComponent(user.id)+'&word=eq.'+encodeURIComponent(word),{method:'DELETE',headers:headers(true)})}
-async function toggleMasteredElement(cur){if(!cur)return;const word=norm(cur.dataset.word||cur.childNodes[0]?.textContent||cur.textContent);if(!word)return;const s=localSet(),on=!s.has(word);setPending(word,on);on?s.add(word):s.delete(word);saveLocal(s);if(navigator.vibrate)try{navigator.vibrate(35)}catch{}try{await setCloud(word,on);clearPending(word,on);status(user?'已同步 · '+localSet().size+' 个掌握词':'已保存在本机 · '+s.size+' 个掌握词，登录后同步')}catch{status('本机已保存 · '+s.size+' 个掌握词 · 云同步稍后重试')}}
+async function toggleMasteredElement(cur){
+ if(!cur)return;
+ const word=norm(cur.dataset.word||cur.childNodes[0]?.textContent||cur.textContent);if(!word)return;
+ const s=localSet(),on=!s.has(word);setPending(word,on);on?s.add(word):s.delete(word);saveLocal(s);
+ if(navigator.vibrate)try{navigator.vibrate(35)}catch{}
+ if(!user){status('已保存在本机 · '+s.size+' 个掌握词，登录后同步');return}
+ try{await mergeCloud()}catch{status('本机已保存 · 云同步稍后重试')}
+}
 function installLongPress(){
-let timer=null,target=null,startX=0,startY=0,suppressClickUntil=0;
-const clear=()=>{if(timer)clearTimeout(timer);timer=null;target=null};
-const fire=()=>{const cur=target;if(!cur)return;timer=null;target=null;suppressClickUntil=Date.now()+900;toggleMasteredElement(cur)};
+let timer=null,target=null,startX=0,startY=0,suppressClickUntil=0,pressed=false;
+const clear=()=>{if(pressed){suppressClickUntil=Date.now()+900;pressed=false}if(timer)clearTimeout(timer);timer=null;target=null};
+const fire=()=>{const cur=target;if(!cur)return;timer=null;target=null;pressed=true;suppressClickUntil=Infinity;toggleMasteredElement(cur)};
 const start=(w,x,y)=>{clear();target=w;startX=x;startY=y;timer=setTimeout(fire,520)};
 if(window.PointerEvent){
-document.addEventListener('pointerdown',e=>{const w=e.target.closest?.('.word');if(w)start(w,e.clientX,e.clientY)},{passive:true});
+document.addEventListener('pointerdown',e=>{if(e.button!==0||e.isPrimary===false)return;const w=e.target.closest?.('.word');if(w)start(w,e.clientX,e.clientY)},{passive:true});
 document.addEventListener('pointermove',e=>{if(timer&&Math.hypot(e.clientX-startX,e.clientY-startY)>24)clear()},{passive:true});
 document.addEventListener('pointerup',clear,{passive:true});
 document.addEventListener('pointercancel',clear,{passive:true});
@@ -37,7 +69,19 @@ document.addEventListener('contextmenu',e=>{if(e.target.closest?.('.word'))e.pre
 document.addEventListener('click',e=>{if(Date.now()<suppressClickUntil&&e.target.closest?.('.word')){e.preventDefault();e.stopImmediatePropagation()}},true);
 }
 function addUI(){const dash=document.getElementById('progressDashboard');if(!dash)return;const box=document.createElement('div');box.className='sync-panel';box.innerHTML='<h3>☁️ 学习数据同步</h3><div class="mastered-progress"><b id="masteredTotal">0 / '+TOTAL+'</b><span id="masteredPercent">0.0%</span><div class="progress-track"><i id="masteredBar"></i></div></div><p id="syncStatus" class="muted compact">正在检查登录状态…</p><div id="syncLoggedOut"><input id="syncEmail" type="email" autocomplete="email" placeholder="输入邮箱"><button class="btn primary" id="sendMagic" type="button">发送登录链接</button></div><div id="syncLoggedIn" hidden><span id="syncUser"></span><button class="btn" id="syncNow" type="button">立即同步</button><button class="btn" id="syncOut" type="button">退出登录</button></div>';dash.appendChild(box);document.getElementById('sendMagic').onclick=async()=>{const email=document.getElementById('syncEmail').value.trim();if(!email)return status('请先输入邮箱');status('正在连接 Supabase…');try{await sendMagic(email);status('登录链接已发送，请检查邮箱')}catch(e){status('网络登录失败：'+e.message+'。本机掌握记录仍正常保存')}};document.getElementById('syncNow').onclick=()=>mergeCloud().catch(e=>status('同步失败：'+e.message));document.getElementById('syncOut').onclick=()=>storeSession(null)}
-function authUI(){const a=document.getElementById('syncLoggedOut'),b=document.getElementById('syncLoggedIn'),u=document.getElementById('syncUser');if(!a)return;a.hidden=!!user;b.hidden=!user;if(user){u.textContent=user.email||'已登录';status('正在同步…');mergeCloud().catch(e=>status('同步失败：'+e.message))}else status('未登录 · 掌握状态保存在本机')}
-async function init(){refresh();installLongPress();addUI();captureMagicLink();if(!session)await restore();else if(!user)await restore();authUI()}
+function authUI(){const a=document.getElementById('syncLoggedOut'),b=document.getElementById('syncLoggedIn'),u=document.getElementById('syncUser');if(!a)return;a.hidden=!!user;b.hidden=!user;if(user){u.textContent=user.email||'已登录';status('已登录')}else status('未登录 · 掌握状态保存在本机')}
+async function init(){
+ refresh();installLongPress();addUI();
+ // Recover local marks created by older versions that discarded their queue.
+ const migrated='kaoyan_pending_migrated_v2';
+ if(!localStorage.getItem(migrated)){const p=pending();for(const w of localSet())if(!(w in p))setPending(w,true);localStorage.setItem(migrated,'1')}
+ const h=new URLSearchParams(location.hash.slice(1));
+ if(h.get('access_token')){storeSession({access_token:h.get('access_token'),refresh_token:h.get('refresh_token'),user:null});history.replaceState(null,'',location.pathname+location.search)}
+ await restore();authUI();
+ if(user)mergeCloud().catch(e=>status('同步失败：'+e.message));
+ window.addEventListener('kaoyan:mastered-import',()=>{for(const w of localSet())setPending(w,true);refresh();mergeCloud().catch(e=>status('同步失败：'+e.message))});
+ window.addEventListener('online',()=>{restore().then(()=>mergeCloud()).catch(e=>status('同步失败：'+e.message))});
+ window.addEventListener('storage',e=>{if(e.key===MK)refresh();if(e.key===PK)revision++});
+}
 document.readyState==='loading'?document.addEventListener('DOMContentLoaded',init):init();
 })();

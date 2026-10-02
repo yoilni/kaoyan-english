@@ -1,8 +1,7 @@
 name: Deploy review tracing helper
 on:
-  push:
-    paths:
-      - '.github/workflows/inject-review-origin-helper.yml'
+  workflow_dispatch:
+
 permissions:
   contents: write
 jobs:

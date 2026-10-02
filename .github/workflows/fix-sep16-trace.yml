@@ -1,9 +1,7 @@
 name: Fix Sep 16 vocab trace cache
 
 on:
-  push:
-    paths:
-      - '.github/workflows/fix-sep16-trace.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write

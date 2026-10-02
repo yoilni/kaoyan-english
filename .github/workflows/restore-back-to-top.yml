@@ -1,8 +1,7 @@
 name: Restore back-to-top button
 on:
-  push:
-    paths:
-      - '.github/workflows/restore-back-to-top.yml'
+  workflow_dispatch:
+
 permissions:
   contents: write
 jobs:
