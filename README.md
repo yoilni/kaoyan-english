@@ -141,3 +141,16 @@
 `读取 README.md → 读取当前 app.js/style.css → 读取待修改页面 → 对照防回归清单 → 修改 → 再检查关键功能 → 提交`
 
 新增功能应同步补充到本 README 的“功能契约”和检查清单中，使后续版本默认继承，而不是靠聊天上下文记忆。
+
+## 自动回归与发布门禁（2026-10-02）
+
+- `sync.js` 必须幂等初始化；每页只直接加载一次。`review-origin.js` 只负责复习语境和首学溯源，禁止再加载同步脚本。
+- 未登录/断网操作必须保留待上传队列（包括取消掌握的 `false`）；仅服务器确认后清除。同步先串行补传，再分页下载；下载期间的新操作不得被旧快照覆盖。
+- `python scripts/vocab.py --date YYYY-MM-DD` 是新文章提交前的必跑检查：50个新词、完整历史去重、复习间隔、IPA、音频URL、脚本加载、首页入口。需要另做正文语境与学习组件的人工/浏览器检查。
+- 可用 `--mastered /私有路径/掌握快照.json` 排除已掌握词。快照只用于本次检查，不提交用户掌握数据到公开仓库。
+- `python scripts/vocab.py --sync` 无损合并主日志、增量日志和页面目标词，同时生成 `data/word-origins.json`。保留历史记录，不以最新页覆盖历史。
+- `python scripts/check_content.py` 对比明确保留的历史缺陷基线；新日期不得增加缺陷。`tests/content-baseline.json` 是旧内容待修清单，不是允许新文章降低标准的模板；新增日期禁止加入基线绕过检查。
+- `npm ci`、`npx playwright install chromium` 后，启动 `python -m http.server 8765 --bind 127.0.0.1`，另一个终端运行 `npm test`。测试不写真实云端掌握记录。
+- GitHub `Validate learning features` 对提交和PR运行回归；`Sync vocab log` 是词汇日志唯一自动写入者。音频工作流只缓存音频，两者串行执行，避免抢写。
+- GitHub Actions 不负责生成每日文章。每日生成由独立的“发布每日考研英语”定时任务负责；定时任务生成后同样要执行上述门禁，再检查 Pages 部署。
+- 早期 8月15–18日为无结构化词表的静态文章；9月25日是未完成草稿，不算已发布文章。不得伪造缺失词义、IPA或文章来让检查通过。

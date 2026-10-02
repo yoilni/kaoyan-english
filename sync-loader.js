@@ -1,1 +1,1 @@
-(()=>{if(document.querySelector('script[data-kaoyan-sync]'))return;const s=document.createElement('script');s.dataset.kaoyanSync='1';s.src='../sync.js?v=20260918-1';document.head.appendChild(s)})();
+(()=>{if(window.__kaoyanSyncInstalled||[...document.scripts].some(s=>/\/sync\.js(?:[?#]|$)/.test(s.src)))return;const s=document.createElement('script');s.src=new URL('sync.js?v=20261002-audit1',document.currentScript.src).href;document.head.append(s)})();

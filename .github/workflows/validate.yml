@@ -1,0 +1,23 @@
+name: Validate learning features
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: python scripts/check_content.py
+      - run: node --check app.js && node --check sync.js && node --check review-origin.js
+      - name: Interaction and synchronization regression
+        run: |
+          python -m http.server 8765 --bind 127.0.0.1 > /tmp/kaoyan-http.log 2>&1 &
+          node tests/interaction.cjs

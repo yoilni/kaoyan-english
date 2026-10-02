@@ -1,0 +1,1 @@
+{"name":"kaoyan-english","private":true,"scripts":{"test":"node tests/interaction.cjs","check:content":"python scripts/check_content.py"},"devDependencies":{"playwright":"1.56.1"}}

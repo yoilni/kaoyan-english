@@ -1,5 +1,9 @@
 name: Cache pronunciation URLs
 
+concurrency:
+  group: generated-content-main
+  cancel-in-progress: false
+
 on:
   push:
     branches: [main]
@@ -18,8 +22,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: main
 
-      - name: Resolve audio and sync vocabulary log
+      - name: Resolve audio URLs
         shell: python
         run: |
           import json, re, time, urllib.parse, urllib.request
@@ -46,22 +51,6 @@ jobs:
                   if key not in words:
                       words.append(key)
 
-          log_path = Path('data/vocab-log.json')
-          log = json.loads(log_path.read_text(encoding='utf-8'))
-          days = log.setdefault('days', {})
-          review_stages = {}
-          today = date.fromisoformat(day)
-          for word in review_map:
-              for old_day, info in reversed(list(days.items())):
-                  if word in (info.get('new') or []):
-                      delta = (today - date.fromisoformat(old_day)).days
-                      if delta in log.get('schedule_days', [1,2,4,7,15,30]):
-                          review_stages[word] = delta
-                      break
-          days[day] = {'new': list(new_map.keys()), 'review': review_stages}
-          log_path.write_text(json.dumps(log, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-          print(f'Synced {day}: {len(new_map)} new, {len(review_stages)} scheduled reviews')
-
           def lookup(word):
               url = 'https://api.dictionaryapi.dev/api/v2/entries/en/' + urllib.parse.quote(word)
               req = urllib.request.Request(url, headers={'User-Agent':'kaoyan-english-pronunciation-cache/1.1'})
@@ -86,9 +75,9 @@ jobs:
                       candidates.append((score, audio))
               return max(candidates)[1] if candidates else ''
 
-          audio = {}
+          audio = read_obj('KAOYAN_AUDIO')
           for i, word in enumerate(words, 1):
-              src = lookup(word)
+              src = audio.get(word) or lookup(word)
               if src:
                   audio[word] = src
               print(f'{i}/{len(words)} {word}: {src or "no audio"}')
@@ -99,18 +88,18 @@ jobs:
           if re.search(r'window\.KAOYAN_AUDIO=\{.*?\};', text, re.S):
               text = re.sub(r'window\.KAOYAN_AUDIO=\{.*?\};', replacement, text, count=1, flags=re.S)
           else:
-              text = text.replace('</script><script src="../app.js"></script>', replacement + '</script><script src="../app.js"></script>', 1)
+              raise SystemExit('KAOYAN_AUDIO must be defined before caching')
           page.write_text(text, encoding='utf-8')
           print(f'Cached {len(audio)}/{len(words)} pronunciation URLs in {page}')
 
       - name: Commit generated caches
         run: |
-          if git diff --quiet -- days data/vocab-log.json; then
+          if git diff --quiet -- days; then
             echo 'No generated changes'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add days/*.html data/vocab-log.json
-          git commit -m 'Sync daily vocab and pronunciation URLs'
+          git add days/*.html
+          git commit -m 'Cache daily pronunciation URLs'
           git push
