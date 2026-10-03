@@ -20,4 +20,4 @@ jobs:
       - name: Interaction and synchronization regression
         run: |
           python -m http.server 8765 --bind 127.0.0.1 > /tmp/kaoyan-http.log 2>&1 &
-          node tests/interaction.cjs
+          npm test
