@@ -2799,17 +2799,40 @@
         "thermal",
         "upkeep",
         "vegetation",
-        "ventilation"
+        "ventilation",
+        "accrue",
+        "attainable",
+        "disincentive",
+        "disproportionately",
+        "eviction",
+        "habitable",
+        "installation",
+        "occupancy",
+        "oppressive",
+        "perspiration",
+        "preventive",
+        "ration",
+        "recuperate",
+        "recurrent",
+        "reimbursement",
+        "relocation",
+        "reluctance",
+        "replenish",
+        "restoration",
+        "stifling",
+        "tenancy",
+        "tenant",
+        "wither"
       ],
       "review": {
-        "unprecedented": 1,
-        "reinforcement": 1,
-        "utilization": 1,
         "anticipatory": 1,
         "resilient": 1,
         "outage": 1,
-        "retrofit": 16,
-        "adaptive": 1
+        "adaptive": 1,
+        "finite": 1,
+        "rationale": 1,
+        "incur": 1,
+        "repurpose": 1
       }
     }
   }
