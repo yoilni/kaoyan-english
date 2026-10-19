@@ -10,6 +10,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 NORM = lambda w: ' '.join(str(w).strip().lower().split())
 
+def pages():
+    return sorted(p for p in (ROOT / 'days').glob('20??-??-??*.html')
+                  if re.fullmatch(r'\d{4}-\d{2}-\d{2}(?:-[a-z0-9-]+)?', p.stem))
+
+def publication_date(page_id):
+    return page_id[:10]
+
 def maps(page):
     text = page.read_text(encoding='utf-8')
     result = {}
@@ -39,8 +46,8 @@ def history():
             add(day, entry)
         if data.get('date'):
             add(data['date'], data)
-    for page in sorted((ROOT / 'days').glob('20??-??-??.html')):
-        add(page.stem, {'new': maps(page).get('NEW', {})})
+    for page in pages():
+        add(publication_date(page.stem), {'new': maps(page).get('NEW', {})})
     return days
 
 def origins():
@@ -52,6 +59,7 @@ def origins():
 
 def validate(day, mastered=()):
     page = ROOT / 'days' / (day + '.html')
+    published = publication_date(day)
     data = maps(page)
     issues = []
     new = [NORM(w) for w in data.get('NEW', {})]
@@ -59,9 +67,15 @@ def validate(day, mastered=()):
     if len(new) != 50 or len(set(new)) != 50:
         issues.append(f'expected 50 unique new words, found {len(set(new))}')
     first = origins()
-    duplicates = [w for w in new if first.get(w, day) < day]
+    duplicates = [w for w in new if first.get(w, published) < published]
     if duplicates:
         issues.append('historical new words: ' + ', '.join(duplicates))
+    same_day = set()
+    for other in pages():
+        if other != page and publication_date(other.stem) == published:
+            same_day.update(set(new) & maps(other).get('NEW', {}).keys())
+    if same_day:
+        issues.append('same-day new words: ' + ', '.join(sorted(same_day)))
     if set(new) & set(review):
         issues.append('new/review overlap: ' + ', '.join(sorted(set(new) & set(review))))
     for name in ('NEW', 'REVIEW', 'IPA', 'AUDIO'):
@@ -76,7 +90,7 @@ def validate(day, mastered=()):
     for word in review:
         if word not in first:
             issues.append('review has no first-learning date: ' + word)
-        elif (date.fromisoformat(day) - date.fromisoformat(first[word])).days not in (1, 2, 4, 7, 15, 30):
+        elif (date.fromisoformat(published) - date.fromisoformat(first[word])).days not in (1, 2, 4, 7, 15, 30):
             issues.append('review outside scheduled interval: ' + word)
     excluded = set(new + review) & set(map(NORM, mastered))
     if excluded:
@@ -94,16 +108,32 @@ def sync():
     log = json.loads(path.read_text())
     days = log.setdefault('days', {})
     first = origins()
+    page_maps = {p: maps(p) for p in pages()}
     for day, words in sorted(history().items()):
         entry = days.setdefault(day, {})
         # Preserve every historical target, including inconsistent incremental logs.
         entry['new'] = list(dict.fromkeys(entry.get('new', [])))
         entry['new'].extend(sorted(words - set(entry['new'])))
-        data = maps(ROOT / 'days' / (day + '.html')) if (ROOT / 'days' / (day + '.html')).exists() else {}
-        if 'REVIEW' in data:
-            entry['review'] = {NORM(w): (date.fromisoformat(day)-date.fromisoformat(first[NORM(w)])).days if NORM(w) in first else None for w in data['REVIEW']}
+        reviews = {}
+        has_review = False
+        for page, data in page_maps.items():
+            if publication_date(page.stem) == day and 'REVIEW' in data:
+                has_review = True
+                reviews.update({NORM(w): (date.fromisoformat(day)-date.fromisoformat(first[NORM(w)])).days if NORM(w) in first else None for w in data['REVIEW']})
+        if has_review:
+            entry['review'] = reviews
     path.write_text(json.dumps(log, ensure_ascii=False, indent=2) + '\n')
     (ROOT / 'data/word-origins.json').write_text(json.dumps(first, ensure_ascii=False, indent=2) + '\n')
+    # A supplementary reading shares a learning date, but has its own source page.
+    overrides = {}
+    for page, data in page_maps.items():
+        day = publication_date(page.stem)
+        primary = page_maps.get(ROOT / 'days' / (day + '.html'), {}).get('NEW', {})
+        if page.stem != day:
+            for word in data.get('NEW', {}):
+                if first.get(NORM(word)) == day and word not in primary:
+                    overrides.setdefault(NORM(word), page.name)
+    (ROOT / 'data/word-source-overrides.json').write_text(json.dumps(overrides, ensure_ascii=False, indent=2) + '\n')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -115,7 +145,7 @@ if __name__ == '__main__':
     if args.sync:
         sync()
     if args.audit:
-        for page in sorted((ROOT / 'days').glob('20??-??-??.html')):
+        for page in pages():
             issues = validate(page.stem)
             if issues:
                 print(page.stem + ': ' + '\n  '.join(issues))

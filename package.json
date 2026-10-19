@@ -2,7 +2,7 @@
   "name": "kaoyan-english",
   "private": true,
   "scripts": {
-    "test": "node tests/interaction.cjs && node tests/reading-revision.cjs && node tests/audio-priority.cjs",
+    "test": "python tests/test_vocab_supplement.py && node tests/interaction.cjs && node tests/reading-revision.cjs && node tests/audio-priority.cjs && node tests/supplementary-reading.cjs",
     "check:content": "python scripts/check_content.py"
   },
   "devDependencies": {
