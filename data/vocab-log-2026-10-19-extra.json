@@ -2,7 +2,7 @@
   "date": "2026-10-19",
   "page": "2026-10-19-extra.html",
   "theme": "文化生活 · 一场无障碍电影放映",
-  "title": "A Seat at the Screening",
+  "title": "Before the Screening Begins",
   "new": [
     "auditorium",
     "rehearsal",
@@ -103,6 +103,6 @@
     "https://www.section508.gov/create/synchronized-media/",
     "https://www.w3.org/WAI/WCAG22/Techniques/failures/F113"
   ],
-  "english_word_count": 675,
+  "english_word_count": 694,
   "paragraphs": 10
 }
