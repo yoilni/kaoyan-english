@@ -13,7 +13,7 @@ if(!window.KAOYAN_NEW&&document.querySelector('.article .word')){
 const maps=[['new',window.KAOYAN_NEW||{}],['review',window.KAOYAN_REVIEW||{}]];
 const audioMap=Object.fromEntries(Object.entries(window.KAOYAN_AUDIO||{}).map(([k,v])=>[k.toLowerCase(),v]));
 const wordTypeMap={};maps.forEach(([type,map])=>Object.keys(map).forEach(w=>wordTypeMap[w.toLowerCase()]=type));
-const dayKey=(location.pathname.match(/(\d{4}-\d{2}-\d{2})\.html$/)||[])[1]||null;
+const dayKey=(location.pathname.match(/(\d{4}-\d{2}-\d{2})(?:-[a-z0-9-]+)?\.html$/)||[])[1]||null;
 const PROGRESS_KEY='kaoyan_progress_v1';
 let progressStore={version:1,days:{}};
 try{const raw=JSON.parse(localStorage.getItem(PROGRESS_KEY)||'null');if(raw&&typeof raw==='object')progressStore={version:1,...raw,days:raw.days||{}};}catch(e){}

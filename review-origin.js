@@ -1,7 +1,7 @@
 (()=>{
 const ORIGINS={"2026-09-16":{"imbalance":"2026-09-15","divergence":"2026-09-15","sluggish":"2026-09-15","overcapacity":"2026-09-15","bottleneck":"2026-09-15","convergence":"2026-09-15","deleverage":"2026-09-15","inequality":"2026-09-15","thrift":"2026-09-15","sentiment":"2026-09-15","appreciation":"2026-09-14","arbitrage":"2026-09-14","discretion":"2026-09-14","exacerbate":"2026-09-14","sophistication":"2026-09-14","infringement":"2026-09-13","deterrence":"2026-09-13","litigation":"2026-09-13","enforceable":"2026-09-13","authenticity":"2026-09-11"}};
 const MEANINGS={imbalance:'失衡',divergence:'分化；背离',sluggish:'低迷的',overcapacity:'产能过剩',bottleneck:'瓶颈',convergence:'趋同',deleverage:'去杠杆',inequality:'不平等',thrift:'节俭',sentiment:'情绪；信心',appreciation:'升值；欣赏',arbitrage:'套利',discretion:'酌情决定权',exacerbate:'加剧',sophistication:'复杂性；成熟度',infringement:'侵权',deterrence:'威慑',litigation:'诉讼',enforceable:'可执行的',authenticity:'真实性'};
-const day=(location.pathname.match(/(\d{4}-\d{2}-\d{2})\.html$/)||[])[1];
+const day=(location.pathname.match(/(\d{4}-\d{2}-\d{2})(?:-[a-z0-9-]+)?\.html$/)||[])[1];
 const W=w=>`<span class="word review" tabindex="0" data-word="${w}" data-type="review" data-meaning="${MEANINGS[w]}">${w}<span>（${MEANINGS[w]}）</span></span>`;
 function injectReviewContext(){if(day!=='2026-09-16')return;const article=document.querySelector('.article');if(!article||document.getElementById('reviewContext16'))return;const box=document.createElement('section');box.id='reviewContext16';box.className='review-context';box.innerHTML=`<div class="part"><b>🟡 Review Bridge · Connecting Yesterday to Today</b><br>把20个复习词重新放回今天“电力与工业竞争”的连续语境。</div>
 <p>The energy transition can create an ${W('imbalance')} between fast-growing electricity demand and ${W('sluggish')} grid investment. That ${W('divergence')} may leave renewable projects facing ${W('overcapacity')} in generation while transmission remains the real ${W('bottleneck')}.</p>
@@ -11,13 +11,16 @@ function injectReviewContext(){if(day!=='2026-09-16')return;const article=docume
 
 function highlightRequested(){const key=(new URLSearchParams(location.search).get('word')||'').toLowerCase();if(!key)return;let n=0;const find=()=>{const el=[...document.querySelectorAll('.article .word')].find(x=>x.dataset.word===key);if(el){el.scrollIntoView({behavior:'smooth',block:'center'});const o=el.style.outline,oo=el.style.outlineOffset,sh=el.style.boxShadow;el.style.outline='3px solid currentColor';el.style.outlineOffset='4px';el.style.boxShadow='0 0 0 8px rgba(255,215,0,.28)';setTimeout(()=>{el.style.outline=o;el.style.outlineOffset=oo;el.style.boxShadow=sh;},2800);return;}if(++n<30)setTimeout(find,100);};setTimeout(find,100);}
 async function addOriginLinks(){
- let first={};try{const r=await fetch('../data/word-origins.json');if(r.ok)first=await r.json()}catch{}
+ const read=async url=>{try{const r=await fetch(url);return r.ok?await r.json():{}}catch{return {}}};
+ const [first,sourcePages]=await Promise.all([read('../data/word-origins.json'),read('../data/word-source-overrides.json')]);
  document.querySelectorAll('.vocab-item,.vcard').forEach(row=>{
   const word=(row.querySelector('.vocab-source-link,.wordlink')?.textContent||'').trim().toLowerCase();
   const origin=first[word]||ORIGINS[day]?.[word];
   if(!origin||origin>=day||row.querySelector('.review-origin-link'))return;
   const a=document.createElement('a');a.className='btn review-origin-link';a.textContent='📖 首学 '+origin.slice(5);
-  a.href='./'+origin+'.html?word='+encodeURIComponent(word)+'&origin=review';row.append(a);
+  const override=sourcePages[word];
+  const source=typeof override==='string'&&/^\d{4}-\d{2}-\d{2}(?:-[a-z0-9-]+)?\.html$/.test(override)?override:origin+'.html';
+  a.href='./'+source+'?word='+encodeURIComponent(word)+'&origin=review';row.append(a);
  });
 }
 function init(){injectReviewContext();highlightRequested();addOriginLinks();}

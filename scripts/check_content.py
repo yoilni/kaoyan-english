@@ -1,9 +1,9 @@
 """Fail on newly introduced contract errors; retain an explicit legacy baseline."""
 import json
 from pathlib import Path
-from vocab import ROOT, validate
+from vocab import ROOT, validate, pages
 baseline_path = ROOT / 'tests/content-baseline.json'
-current = {p.stem: validate(p.stem) for p in sorted((ROOT/'days').glob('20??-??-??.html'))}
+current = {p.stem: validate(p.stem) for p in pages()}
 baseline = json.loads(baseline_path.read_text())
 errors = []
 for day, issues in current.items():
