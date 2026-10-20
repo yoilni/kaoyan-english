@@ -1,8 +1,8 @@
 {
   "date": "2026-10-19",
   "page": "2026-10-19-extra.html",
-  "theme": "文化生活 · 一场无障碍电影放映",
-  "title": "Before the Screening Begins",
+  "theme": "人文与社会 · 帮助与选择权",
+  "title": "When Help Takes Away Choice",
   "new": [
     "auditorium",
     "rehearsal",
@@ -101,8 +101,21 @@
   },
   "sources": [
     "https://www.section508.gov/create/synchronized-media/",
-    "https://www.w3.org/WAI/WCAG22/Techniques/failures/F113"
+    "https://www.w3.org/WAI/WCAG22/Techniques/failures/F113",
+    "https://www.w3.org/WAI/planning/involving-users/"
   ],
-  "english_word_count": 694,
-  "paragraphs": 10
+  "english_word_count": 687,
+  "paragraphs": 10,
+  "paragraph_target_counts": [
+    7,
+    7,
+    7,
+    7,
+    7,
+    8,
+    6,
+    6,
+    8,
+    7
+  ]
 }
