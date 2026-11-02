@@ -1,0 +1,223 @@
+{
+  "date": "2026-11-02",
+  "theme": "教育与生活 · 爱好与评价压力",
+  "title": "When a Hobby Becomes Another Exam",
+  "core_question": "一项爱好只有产生可展示的成绩，才值得继续吗？",
+  "central_claim": "认真练习与自由参与可以并存；对他人作出的承诺需要负责，私人爱好的价值不只取决于成绩。",
+  "new": [
+    "pastime",
+    "novice",
+    "clumsy",
+    "inadequacy",
+    "accomplishment",
+    "instrumental",
+    "quantitative",
+    "qualitative",
+    "appraisal",
+    "inferior",
+    "immerse",
+    "relish",
+    "monotony",
+    "enliven",
+    "recreation",
+    "flawless",
+    "blemish",
+    "mastery",
+    "laborious",
+    "painstaking",
+    "emulate",
+    "practitioner",
+    "dexterity",
+    "artistry",
+    "applause",
+    "intimidate",
+    "ridicule",
+    "acclaim",
+    "prestigious",
+    "esteem",
+    "earnest",
+    "diligent",
+    "devotion",
+    "enthusiasm",
+    "excellence",
+    "amateur",
+    "mediocre",
+    "respectable",
+    "frivolous",
+    "indulgence",
+    "relinquish",
+    "overlook",
+    "soothe",
+    "invigorate",
+    "purposeless",
+    "vocation",
+    "carefree",
+    "fulfillment",
+    "excel",
+    "contentment"
+  ],
+  "review": {
+    "attainable": 31,
+    "reluctance": 31,
+    "premise": 32,
+    "certainty": 32,
+    "discretionary": 32,
+    "respite": 31,
+    "finite": 32,
+    "protracted": 32,
+    "intricate": 32,
+    "surmount": 32,
+    "stifling": 31,
+    "disproportionately": 31,
+    "latent": 32,
+    "remedial": 32,
+    "entail": 32,
+    "rationale": 32,
+    "restorative": 31,
+    "replenish": 31,
+    "coincide": 32,
+    "underpin": 32
+  },
+  "review_origins": {
+    "attainable": "2026-10-02",
+    "reluctance": "2026-10-02",
+    "premise": "2026-10-01",
+    "certainty": "2026-10-01",
+    "discretionary": "2026-10-01",
+    "respite": "2026-10-02",
+    "finite": "2026-10-01",
+    "protracted": "2026-10-01",
+    "intricate": "2026-10-01",
+    "surmount": "2026-10-01",
+    "stifling": "2026-10-02",
+    "disproportionately": "2026-10-02",
+    "latent": "2026-10-01",
+    "remedial": "2026-10-01",
+    "entail": "2026-10-01",
+    "rationale": "2026-10-01",
+    "restorative": "2026-10-02",
+    "replenish": "2026-10-02",
+    "coincide": "2026-10-01",
+    "underpin": "2026-10-01"
+  },
+  "review_schedule": {
+    "attainable": {
+      "interval": 30,
+      "elapsed": 31,
+      "overdue": 1
+    },
+    "reluctance": {
+      "interval": 30,
+      "elapsed": 31,
+      "overdue": 1
+    },
+    "premise": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "certainty": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "discretionary": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "respite": {
+      "interval": 30,
+      "elapsed": 31,
+      "overdue": 1
+    },
+    "finite": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "protracted": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "intricate": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "surmount": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "stifling": {
+      "interval": 30,
+      "elapsed": 31,
+      "overdue": 1
+    },
+    "disproportionately": {
+      "interval": 30,
+      "elapsed": 31,
+      "overdue": 1
+    },
+    "latent": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "remedial": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "entail": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "rationale": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "restorative": {
+      "interval": 30,
+      "elapsed": 31,
+      "overdue": 1
+    },
+    "replenish": {
+      "interval": 30,
+      "elapsed": 31,
+      "overdue": 1
+    },
+    "coincide": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    },
+    "underpin": {
+      "interval": 30,
+      "elapsed": 32,
+      "overdue": 2
+    }
+  },
+  "sources": [
+    "https://selfdeterminationtheory.org/wp-content/uploads/2020/06/2020_RyanDeci_IntrinsicandExtrinsic.pdf",
+    "https://www.unesco.org/en/articles/unesco-member-states-adopt-global-framework-strengthen-culture-and-arts-education"
+  ],
+  "english_word_count": 702,
+  "paragraphs": 10,
+  "paragraph_target_counts": [
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7,
+    7
+  ]
+}
