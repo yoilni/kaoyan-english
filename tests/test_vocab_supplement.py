@@ -49,6 +49,32 @@ class SupplementaryHistory(unittest.TestCase):
         self.page('2026-10-20', ['supplement'], [])
         self.assertIn('historical new words: supplement', vocab.validate('2026-10-20'))
 
+    def test_overdue_review_requires_accurate_bounded_catch_up_record(self):
+        self.page('2026-11-18', ['later'], ['legacy'])  # 31 days after October 18.
+        issue = 'review outside scheduled interval: legacy'
+        self.assertIn(issue, vocab.validate('2026-11-18'))
+        path = vocab.ROOT / 'data/vocab-log-2026-11-18.json'
+        def record(timing, day='2026-11-18'):
+            path.write_text(json.dumps({'date': day, 'review_schedule': {'legacy': timing}}))
+        record({'interval': 30, 'elapsed': 31, 'overdue': 1})
+        self.assertNotIn(issue, vocab.validate('2026-11-18'))
+        for timing in [
+            {'interval': 15, 'elapsed': 31, 'overdue': 16},
+            {'interval': 30, 'elapsed': 30, 'overdue': 0},
+            {'interval': 30, 'elapsed': 31, 'overdue': -1},
+            {'interval': '30', 'elapsed': 31, 'overdue': 1},
+        ]:
+            with self.subTest(timing=timing):
+                record(timing)
+                self.assertIn(issue, vocab.validate('2026-11-18'))
+        record({'interval': 30, 'elapsed': 31, 'overdue': 1}, day='2026-11-17')
+        self.assertIn(issue, vocab.validate('2026-11-18'))
+        self.page('2026-11-25', ['later-still'], ['legacy'])
+        (vocab.ROOT / 'data/vocab-log-2026-11-25.json').write_text(json.dumps({
+            'date': '2026-11-25', 'review_schedule': {'legacy': {'interval': 30, 'elapsed': 38, 'overdue': 8}}
+        }))
+        self.assertIn(issue, vocab.validate('2026-11-25'))
+
 
 if __name__ == '__main__':
     unittest.main()

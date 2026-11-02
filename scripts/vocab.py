@@ -9,6 +9,25 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 NORM = lambda w: ' '.join(str(w).strip().lower().split())
+REVIEW_INTERVALS = (1, 2, 4, 7, 15, 30)
+
+def documented_catch_up(page_id, word, elapsed):
+    """Accept a bounded overdue review only when its actual timing is recorded."""
+    path = ROOT / 'data' / ('vocab-log-' + page_id + '.json')
+    if not path.exists():
+        return False
+    record = json.loads(path.read_text())
+    if not isinstance(record, dict) or record.get('date') != publication_date(page_id) or record.get('page', page_id + '.html') != page_id + '.html':
+        return False
+    schedule = record.get('review_schedule', {})
+    timing = schedule.get(word) if isinstance(schedule, dict) else None
+    if not isinstance(timing, dict) or any(type(timing.get(k)) is not int for k in ('interval', 'elapsed', 'overdue')):
+        return False
+    due = [n for n in REVIEW_INTERVALS if n < elapsed]
+    return (bool(due) and timing['interval'] == max(due)
+            and timing['elapsed'] == elapsed
+            and timing['overdue'] == elapsed - timing['interval']
+            and 1 <= timing['overdue'] <= 7)
 
 def pages():
     return sorted(p for p in (ROOT / 'days').glob('20??-??-??*.html')
@@ -90,8 +109,10 @@ def validate(day, mastered=()):
     for word in review:
         if word not in first:
             issues.append('review has no first-learning date: ' + word)
-        elif (date.fromisoformat(published) - date.fromisoformat(first[word])).days not in (1, 2, 4, 7, 15, 30):
-            issues.append('review outside scheduled interval: ' + word)
+        else:
+            elapsed = (date.fromisoformat(published) - date.fromisoformat(first[word])).days
+            if elapsed not in REVIEW_INTERVALS and not documented_catch_up(day, word, elapsed):
+                issues.append('review outside scheduled interval: ' + word)
     excluded = set(new + review) & set(map(NORM, mastered))
     if excluded:
         issues.append('mastered words selected: ' + ', '.join(sorted(excluded)))
