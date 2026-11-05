@@ -96,7 +96,8 @@ document.querySelectorAll('.word').forEach(e=>{if(masteredSet.has(e.dataset.word
 document.addEventListener('click',event=>{
  const e=event.target.closest?.('.word');if(!e)return;
  e.classList.toggle('open');
- if(e.classList.contains('open')){
+ if(e.hasAttribute('aria-expanded'))e.setAttribute('aria-expanded',String(e.classList.contains('open')));
+ if(e.classList.contains('open')&&!e.closest('.sentence-review')){
   if(e.dataset.type==='new')viewedNew.add(e.dataset.word);
   if(e.dataset.type==='review')viewedReview.add(e.dataset.word);
   recordWordAction(e.dataset.word,'meaning',e.dataset.type);updateCounters();
@@ -109,6 +110,26 @@ document.addEventListener('keydown',event=>{
 updateCounters();
 const info=document.getElementById('newCount')?.closest('.card');if(info&&!document.getElementById('learningStats')){const stats=document.createElement('p');stats.id='learningStats';stats.className='muted';stats.style.marginBottom='0';info.append(stats);updateProgressSummary();}
 if(info&&!document.getElementById('chromeTtsTest')){const btn=document.createElement('button');btn.type='button';btn.id='chromeTtsTest';btn.className='btn';btn.textContent='🔊 测试 Chrome 发音';btn.title='强制使用浏览器 Web Speech API，不使用预缓存真人音频';const status=document.createElement('span');status.id='chromeTtsStatus';status.className='muted';status.style.marginLeft='8px';btn.addEventListener('click',()=>{if(tts('systemic')){status.textContent='正在用浏览器语音朗读：systemic';setTimeout(()=>{status.textContent='';},3500);}else status.textContent='当前浏览器不支持 speechSynthesis';});info.append(document.createElement('br'),btn,status);}
+function installSentenceReview(){
+ const holder=document.querySelector('.hero-card')||(dayKey&&article&&(info||article));
+ const script=document.currentScript?.src;
+ if(!holder||!script||!('showModal' in document.createElement('dialog')))return;
+ const root=new URL('.',script),entry=document.createElement('button'),status=document.createElement('span');
+ entry.type='button';entry.id='startSentenceReview';entry.className='btn';entry.textContent='原句复习';
+ status.className='muted';status.setAttribute('role','status');
+ entry.addEventListener('click',async()=>{
+  entry.disabled=true;status.textContent='';
+  try{
+   const {openSentenceReview}=await import(new URL('sentence-review.js?v=20261105',root).href);
+   entry.disabled=false;
+   openSentenceReview(root,entry);
+  }catch{
+   status.textContent='复习模式暂时无法打开，请重试。';
+  }finally{entry.disabled=false;}
+ });
+ if(holder===article)article.before(entry,status);else holder.append(entry,status);
+}
+installSentenceReview();
 if('speechSynthesis' in window){window.speechSynthesis.getVoices();window.speechSynthesis.addEventListener?.('voiceschanged',()=>window.speechSynthesis.getVoices(),{once:true});}
 function localDateKey(date=new Date()){const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return `${y}-${m}-${d}`;}
 function addDays(key,delta){const d=new Date(key+'T12:00:00');d.setDate(d.getDate()+delta);return localDateKey(d);}
