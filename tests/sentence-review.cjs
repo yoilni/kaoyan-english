@@ -71,8 +71,8 @@ const assert=require('node:assert/strict');
   await dialog.getByText('本轮完成 · 已练 3 个词；1 个词未能找到首学原句。',{exact:true}).waitFor();
   assert.equal(wrongSource,false);
   await page.keyboard.press('Escape');
-  await dialog.waitFor({state:'detached'});
-  assert.ok(await entry.evaluate(e=>e===document.activeElement));
+  await page.locator('.sentence-review').waitFor({state:'detached'});
+  await page.waitForFunction(()=>document.activeElement?.id==='startSentenceReview');
 
   await page.goto(base+'/days/2026-11-05.html');
   const counter=page.locator('#reviewCount');
