@@ -134,7 +134,7 @@ function installSentenceReview(){
  entry.addEventListener('click',async()=>{
   entry.disabled=true;status.textContent='';
   try{
-   const {openSentenceReview}=await import(new URL('sentence-review.js?v=20261109',root).href);
+   const {openSentenceReview}=await import(new URL('sentence-review.js?v=20261109-review-nav',root).href);
    entry.disabled=false;
    openSentenceReview(root,entry,{makePhonetic,stopPronunciation});
   }catch{
