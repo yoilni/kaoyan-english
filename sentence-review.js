@@ -100,12 +100,16 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
    <p class="muted sentence-review-status" role="status"></p>
    <p class="sentence-review-text" lang="en" aria-live="polite" hidden></p>
    <div class="muted" role="status" data-review-audio-status></div>
-   <button class="btn primary" type="button" data-review-next hidden>下一个</button>
+   <div class="sentence-review-actions">
+    <button class="btn" type="button" data-review-prev hidden disabled>上一个</button>
+    <button class="btn primary" type="button" data-review-next hidden disabled>下一个</button>
+   </div>
   </div>
  </section>`;
  const status=dialog.querySelector('.sentence-review-status');
  const text=dialog.querySelector('.sentence-review-text');
  const audioStatus=dialog.querySelector('[data-review-audio-status]');
+ const previous=dialog.querySelector('[data-review-prev]');
  const next=dialog.querySelector('[data-review-next]');
  const controller=new AbortController();
  const fetchLocal=async path=>{
@@ -114,7 +118,7 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
   return response;
  };
  const cache=new Map();
- let deck=[],position=0,shown=0,overrides={},legacyIpa;
+ let deck=[],position=0,cards=[],current=-1,overrides={},legacyIpa;
  async function cardFor(word,origin){
   const override=overrides[word];
   const file=typeof override==='string'&&datePage.test(override)?override:origin+'.html';
@@ -164,28 +168,51 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
   text.replaceChildren(...parts,line.slice(match.index+match[0].length));
   text.hidden=false;
  }
- async function advance(){
+ function resetPronunciation(){
   stopPronunciation();audioStatus.textContent='';
-  next.hidden=true;next.disabled=true;text.hidden=true;text.replaceChildren();
+ }
+ function showLoading(){
+  resetPronunciation();
+  previous.hidden=next.hidden=true;
+  previous.disabled=next.disabled=true;
+  text.hidden=true;text.replaceChildren();
   status.textContent='正在找首学原句…';
+ }
+ function showActions(label){
+  previous.hidden=cards.length===0;previous.disabled=current<=0;
+  next.textContent=label;next.disabled=false;next.hidden=false;
+ }
+ function showCard(index){
+  const focusNext=index===0&&document.activeElement===previous;
+  resetPronunciation();
+  current=index;
+  status.textContent='本轮第 '+(current+1)+' 个词';
+  render(cards[current]);
+  showActions('下一个');
+  if(focusNext)next.focus({preventScroll:true});
+ }
+ async function advance(){
+  if(current+1<cards.length){showCard(current+1);return;}
+  showLoading();
   while(position<deck.length&&dialog.open){
    const card=await cardFor(...deck[position++]);
    if(!dialog.open)return;
    if(!card)continue;
-   shown++;
-   status.textContent='本轮第 '+shown+' 个词';
-   render(card);next.textContent='下一个';next.disabled=false;next.hidden=false;
+   cards.push(card);
+   showCard(cards.length-1);
    return;
   }
   if(!dialog.open)return;
+  const shown=cards.length;
+  current=shown;
   const missing=deck.length-shown;
   status.textContent=shown?'本轮完成 · 已练 '+shown+' 个词'+(missing?'；'+missing+' 个词未能找到首学原句。':'。'):
    '暂时找不到可用的首学原句。';
-  next.textContent=shown?'再练一轮':'重试';next.disabled=false;next.hidden=false;
+  showActions(shown?'再练一轮':'重试');
  }
  async function start(){
-  position=0;shown=0;cache.clear();
-  status.textContent='正在找首学原句…';next.hidden=true;next.disabled=true;
+  deck=[];position=0;cards=[];current=-1;cache.clear();
+  showLoading();
   try{
    const [first,sourceOverrides]=await Promise.all(['data/word-origins.json','data/word-source-overrides.json'].map(path=>fetchLocal(path).then(r=>r.json())));
    if(!dialog.open)return;
@@ -197,10 +224,15 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
   }catch{
    if(!dialog.open)return;
    status.textContent='原句暂时无法加载，请重试。';
-   next.textContent='重试';next.disabled=false;next.hidden=false;
+   showActions('重试');
   }
  }
- next.addEventListener('click',()=>next.textContent==='下一个'?advance():start());
+ previous.addEventListener('click',()=>{if(!previous.disabled&&current>0)showCard(current-1);});
+ next.addEventListener('click',()=>{
+  if(next.disabled)return;
+  if(current>=0&&current<cards.length)advance();
+  else start();
+ });
  dialog.querySelector('[data-review-close]').addEventListener('click',()=>dialog.close());
  dialog.addEventListener('close',()=>{
   controller.abort();stopPronunciation();dialog.remove();
@@ -208,7 +240,6 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
  },{once:true});
  document.body.append(dialog);
  dialog.showModal();
- stopPronunciation();
  start();
 }
 
