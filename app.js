@@ -30,27 +30,41 @@ let activeUtterance=null,activeAudio=null,audioTimer=null,playbackId=0;
 function stopAudio(){playbackId++;clearTimeout(audioTimer);audioTimer=null;try{if(activeAudio){activeAudio.onerror=activeAudio.onended=activeAudio.onplaying=null;activeAudio.pause();activeAudio.currentTime=0;activeAudio=null;}}catch(e){}}
 function audioStatus(text){let el=document.getElementById('audioSourceStatus');if(!el){const box=document.getElementById('newCount')?.closest('.card');if(!box)return;el=document.createElement('p');el.id='audioSourceStatus';el.className='muted';el.setAttribute('role','status');box.append(el)}el.textContent=text}
 function tts(word){if(!('speechSynthesis' in window))return false;try{stopAudio();const synth=window.speechSynthesis;synth.cancel();const u=new SpeechSynthesisUtterance(word);activeUtterance=u;u.lang='en-US';u.rate=.82;u.pitch=1;u.volume=1;const voices=synth.getVoices();const v=voices.find(x=>/^en-US/i.test(x.lang))||voices.find(x=>/^en/i.test(x.lang));if(v)u.voice=v;u.onend=u.onerror=()=>{if(activeUtterance===u)activeUtterance=null;};synth.speak(u);return true;}catch(e){return false;}}
-function speak(word){
+function stopPronunciation(){window.speechSynthesis?.cancel();stopAudio();}
+function speak(word,{backupAudio,report=audioStatus}={}){
  const key=word.trim().toLowerCase();if(!key)return false;
- window.speechSynthesis?.cancel();stopAudio();const id=playbackId;
+ stopPronunciation();const id=playbackId;
  const youdao='https://dict.youdao.com/dictvoice?audio='+encodeURIComponent(key)+'&type=2';
  const sources=[{url:youdao,label:'有道词典发音'}];
- if(audioMap[key]&&audioMap[key]!==youdao&&/^https:\/\//.test(audioMap[key]))sources.push({url:audioMap[key],label:'备用词典音频'});
+ const backup=backupAudio||audioMap[key];
+ if(typeof backup==='string'&&backup!==youdao&&/^https:\/\//.test(backup))sources.push({url:backup,label:'备用词典音频'});
  const play=index=>{
   if(id!==playbackId)return;
-  if(index>=sources.length){audioStatus('浏览器语音（词典音频暂不可用）');tts(key);return}
+  if(index>=sources.length){report(tts(key)?'浏览器语音（词典音频暂不可用）':'暂时无法播放发音');return}
   const source=sources[index];let a,failed=false;
   const fallback=()=>{if(failed||id!==playbackId)return;failed=true;clearTimeout(audioTimer);if(a){a.onerror=a.onended=a.onplaying=null;try{a.pause()}catch(e){}}if(activeAudio===a)activeAudio=null;play(index+1)};
   try{a=new Audio(source.url);activeAudio=a;a.preload='none';
-   audioStatus('正在加载：'+source.label);
-   a.onerror=fallback;a.onplaying=()=>{if(id===playbackId){clearTimeout(audioTimer);audioStatus('正在播放：'+source.label)}};
-   a.onended=()=>{if(id===playbackId){clearTimeout(audioTimer);activeAudio=null;audioStatus('发音来源：'+source.label)}};
+   report('正在加载：'+source.label);
+   a.onerror=fallback;a.onplaying=()=>{if(id===playbackId){clearTimeout(audioTimer);report('正在播放：'+source.label)}};
+   a.onended=()=>{if(id===playbackId){clearTimeout(audioTimer);activeAudio=null;report('发音来源：'+source.label)}};
    audioTimer=setTimeout(fallback,6000);const result=a.play();if(result?.catch)result.catch(fallback);
   }catch(e){fallback()}
  };
  play(0);return true;
 }
-function makePhonetic(word,label=word){const ph=document.createElement('button');ph.type='button';ph.className='phonetic';ph.dataset.speak=word;ph.setAttribute('aria-label',`播放 ${label} 的发音`);ph.title='优先有道词典发音；失败时尝试备用词典音频，再回退浏览器语音';ph.textContent=(ipa[word]||'')+' 🔊';ph.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();recordWordAction(word,'audio',wordTypeMap[word.toLowerCase()]);speak(word);},{passive:false});return ph;}
+function makePhonetic(word,label=word,{phonetic=ipa[word],backupAudio,report,track=true}={}){
+ const ph=document.createElement('button');
+ ph.type='button';ph.className='phonetic';ph.dataset.speak=word;
+ ph.setAttribute('aria-label',`播放 ${label} 的发音`);
+ ph.title='优先有道词典发音；失败时尝试备用词典音频，再回退浏览器语音';
+ ph.textContent=typeof phonetic==='string'&&phonetic?phonetic+' 🔊':'🔊';
+ ph.addEventListener('click',ev=>{
+  ev.preventDefault();ev.stopPropagation();
+  if(track)recordWordAction(word,'audio',wordTypeMap[word.toLowerCase()]);
+  speak(word,{backupAudio,report});
+ });
+ return ph;
+}
 function injectTranslations(article,translations){if(!article||!Array.isArray(translations))return;[...article.querySelectorAll(':scope > p')].forEach((p,i)=>{if(p.nextElementSibling?.classList.contains('translation-wrap'))return;const zh=translations[i];if(!zh)return;const box=document.createElement('div');box.className='translation-wrap';const btn=document.createElement('button');btn.type='button';btn.className='translation-toggle';btn.textContent='查看中文翻译';btn.setAttribute('aria-expanded','false');const panel=document.createElement('div');panel.className='translation-panel';panel.hidden=true;panel.textContent=zh;btn.addEventListener('click',()=>{const open=panel.hidden;panel.hidden=!open;btn.textContent=open?'收起中文翻译':'查看中文翻译';btn.setAttribute('aria-expanded',String(open));if(open)recordTranslation(i);});box.append(btn,panel);p.after(box);});}
 async function loadTranslations(article){const inline=Array.isArray(window.KAOYAN_TRANSLATIONS)?window.KAOYAN_TRANSLATIONS:[];if(inline.length){injectTranslations(article,inline);return;}const m=location.pathname.match(/(\d{4}-\d{2}-\d{2})\.html$/);if(!m)return;try{const r=await fetch(`../data/translations/${m[1]}.json`,{cache:'no-store'});if(r.ok)injectTranslations(article,await r.json());}catch(e){}}
 const article=document.querySelector('.article');
@@ -120,9 +134,9 @@ function installSentenceReview(){
  entry.addEventListener('click',async()=>{
   entry.disabled=true;status.textContent='';
   try{
-   const {openSentenceReview}=await import(new URL('sentence-review.js?v=20261105',root).href);
+   const {openSentenceReview}=await import(new URL('sentence-review.js?v=20261109',root).href);
    entry.disabled=false;
-   openSentenceReview(root,entry);
+   openSentenceReview(root,entry,{makePhonetic,stopPronunciation});
   }catch{
    status.textContent='复习模式暂时无法打开，请重试。';
   }finally{entry.disabled=false;}

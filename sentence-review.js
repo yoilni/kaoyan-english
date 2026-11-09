@@ -33,15 +33,20 @@ function readLegacyParagraphs(scripts){
  return [];
 }
 
+function readMap(scripts,key){
+ const assignment=new RegExp('\\bwindow\\.KAOYAN_'+key+'\\s*=\\s*(\\{[\\s\\S]*?\\})\\s*;');
+ for(const script of scripts){
+  const match=script.textContent.match(assignment);
+  if(match){try{return JSON.parse(match[1])}catch{}}
+ }
+ return {};
+}
+
 function readSource(html){
  const doc=new DOMParser().parseFromString(html,'text/html');
  const article=doc.querySelector('.article');
- if(!article)return {sentences:[],meanings:{}};
- let meanings={};
- for(const script of doc.scripts){
-  const match=script.textContent.match(/window\.KAOYAN_NEW\s*=\s*(\{[\s\S]*?\})\s*;/);
-  if(match){try{meanings=JSON.parse(match[1]);break}catch{}}
- }
+ if(!article)return null;
+ const meanings=readMap(doc.scripts,'NEW');
  for(const node of article.querySelectorAll('.word')){
   const word=(node.dataset.word||node.firstChild?.textContent||'').trim().toLowerCase();
   const gloss=(node.dataset.meaning||node.querySelector('span')?.textContent||'').trim().replace(/^[（(]|[）)]$/g,'');
@@ -55,7 +60,8 @@ function readSource(html){
    article.append(p);
   }
  }
- return {sentences:[...article.querySelectorAll('p')].flatMap(sentences),meanings};
+ return {sentences:[...article.querySelectorAll('p')].flatMap(sentences),meanings,
+  ipa:readMap(doc.scripts,'IPA'),audio:readMap(doc.scripts,'AUDIO')};
 }
 
 function targetPatterns(word){
@@ -80,7 +86,7 @@ function shuffled(entries){
  return deck;
 }
 
-export function openSentenceReview(root,trigger){
+export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=()=>{}}={}){
  const dialog=document.createElement('dialog');
  dialog.className='sentence-review';
  dialog.setAttribute('aria-labelledby','sentenceReviewTitle');
@@ -89,15 +95,17 @@ export function openSentenceReview(root,trigger){
    <h1 id="sentenceReviewTitle">原句复习</h1>
    <button class="btn" type="button" data-review-close>退出复习</button>
   </header>
-  <p class="muted">从以往文章随机抽词。先回想词义，再点击查看中文；长按可标记或取消掌握。</p>
+  <p class="muted">从以往文章随机抽词。点击单词查看中文；${makePhonetic?'点击音标听发音；':''}长按可标记或取消掌握。</p>
   <div class="card">
    <p class="muted sentence-review-status" role="status"></p>
    <p class="sentence-review-text" lang="en" aria-live="polite" hidden></p>
+   <div class="muted" role="status" data-review-audio-status></div>
    <button class="btn primary" type="button" data-review-next hidden>下一个</button>
   </div>
  </section>`;
  const status=dialog.querySelector('.sentence-review-status');
  const text=dialog.querySelector('.sentence-review-text');
+ const audioStatus=dialog.querySelector('[data-review-audio-status]');
  const next=dialog.querySelector('[data-review-next]');
  const controller=new AbortController();
  const fetchLocal=async path=>{
@@ -106,7 +114,7 @@ export function openSentenceReview(root,trigger){
   return response;
  };
  const cache=new Map();
- let deck=[],position=0,shown=0,overrides={};
+ let deck=[],position=0,shown=0,overrides={},legacyIpa;
  async function cardFor(word,origin){
   const override=overrides[word];
   const file=typeof override==='string'&&datePage.test(override)?override:origin+'.html';
@@ -120,12 +128,18 @@ export function openSentenceReview(root,trigger){
   for(const pattern of targetPatterns(word)){
    for(const line of source.sentences){
     const match=pattern.exec(line);
-    if(match)return {line,match,word,meaning};
+    if(!match)continue;
+    let phonetic=source.ipa[word];
+    if(makePhonetic&&!phonetic){
+     legacyIpa??=fetchLocal('data/sentence-review-ipa.json').then(r=>r.json()).catch(()=>({}));
+     phonetic=(await legacyIpa)?.[word];
+    }
+    return {line,match,word,meaning,phonetic,backupAudio:source.audio[word]};
    }
   }
   return null;
  }
- function render({line,match,word,meaning}){
+ function render({line,match,word,meaning,phonetic,backupAudio}){
   const target=document.createElement('button');
   target.type='button';
   target.className='word review';
@@ -139,10 +153,19 @@ export function openSentenceReview(root,trigger){
   const gloss=document.createElement('span');
   gloss.textContent='（'+meaning+'）';
   target.append(match[0],gloss);
-  text.replaceChildren(line.slice(0,match.index),target,line.slice(match.index+match[0].length));
+  const parts=[line.slice(0,match.index),target];
+  if(makePhonetic){
+   const pronunciation=makePhonetic(word,word,{
+    phonetic,backupAudio,track:false,report:message=>{audioStatus.textContent=message}
+   });
+   pronunciation.lang='zh-CN';
+   parts.push(pronunciation);
+  }
+  text.replaceChildren(...parts,line.slice(match.index+match[0].length));
   text.hidden=false;
  }
  async function advance(){
+  stopPronunciation();audioStatus.textContent='';
   next.hidden=true;next.disabled=true;text.hidden=true;text.replaceChildren();
   status.textContent='正在找首学原句…';
   while(position<deck.length&&dialog.open){
@@ -180,11 +203,12 @@ export function openSentenceReview(root,trigger){
  next.addEventListener('click',()=>next.textContent==='下一个'?advance():start());
  dialog.querySelector('[data-review-close]').addEventListener('click',()=>dialog.close());
  dialog.addEventListener('close',()=>{
-  controller.abort();dialog.remove();
+  controller.abort();stopPronunciation();dialog.remove();
   trigger.focus({preventScroll:true});
  },{once:true});
  document.body.append(dialog);
  dialog.showModal();
+ stopPronunciation();
  start();
 }
 
