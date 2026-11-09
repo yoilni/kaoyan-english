@@ -7,4 +7,6 @@ body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#f6f7f
 .sentence-review-header h1{margin:0}
 .sentence-review-status{margin-top:0}
 .sentence-review-text{font-size:clamp(1.1rem,3vw,1.35rem);line-height:1.9;overflow-wrap:anywhere;margin:0 0 1rem}
+.sentence-review-text .phonetic{min-width:32px;min-height:32px;padding:2px 5px;touch-action:manipulation}
+.sentence-review [data-review-audio-status]:not(:empty){margin-bottom:.65rem}
 html:has(.sentence-review[open]){overflow:hidden}
