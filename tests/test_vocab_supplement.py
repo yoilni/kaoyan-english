@@ -49,6 +49,18 @@ class SupplementaryHistory(unittest.TestCase):
         self.page('2026-10-20', ['supplement'], [])
         self.assertIn('historical new words: supplement', vocab.validate('2026-10-20'))
 
+    def test_mastered_words_are_rejected_in_reading_text_and_targets(self):
+        self.page('2026-10-20', ['hinges'], ['legacy'])
+        page = vocab.ROOT / 'days' / '2026-10-20.html'
+        page.write_text(
+            '<h1>When hinges wear out</h1><div class="article">'
+            '<p>They <b>studied</b> the joint.</p>'
+            '<div class="study"><p>Do not include this clue.</p></div></div>' + page.read_text()
+        )
+        issues = vocab.validate('2026-10-20', ['hinge', 'study', 'clue'])
+        self.assertIn('mastered words selected: hinge', issues)
+        self.assertIn('mastered words in reading text: hinge, study', issues)
+
     def test_overdue_review_requires_accurate_bounded_catch_up_record(self):
         self.page('2026-11-18', ['later'], ['legacy'])  # 31 days after October 18.
         issue = 'review outside scheduled interval: legacy'

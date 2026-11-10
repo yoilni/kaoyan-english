@@ -1,7 +1,15 @@
 const datePage=/^\d{4}-\d{2}-\d{2}(?:-[a-z0-9-]+)?\.html$/;
 const dateKey=/^\d{4}-\d{2}-\d{2}$/;
 const segmenter=typeof Intl.Segmenter==='function'?new Intl.Segmenter('en',{granularity:'sentence'}):null;
+const masteredKey='kaoyan_mastered_v1';
 const escaped=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
+function masteredWords(){
+ try{
+  const words=JSON.parse(localStorage.getItem(masteredKey)||'[]');
+  return new Set(words.map(word=>String(word).trim().toLowerCase()));
+ }catch{return new Set();}
+}
 
 function todayKey(){
  const parts=new Intl.DateTimeFormat('en',{
@@ -95,7 +103,7 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
    <h1 id="sentenceReviewTitle">原句复习</h1>
    <button class="btn" type="button" data-review-close>退出复习</button>
   </header>
-  <p class="muted">从以往文章随机抽词。点击单词查看中文；${makePhonetic?'点击音标听发音；':''}长按可标记或取消掌握。</p>
+  <p class="muted">从以往文章随机抽取未标绿的词。点击单词查看中文；${makePhonetic?'点击音标听发音；':''}长按可标记或取消掌握。</p>
   <div class="card">
    <p class="muted sentence-review-status" role="status"></p>
    <p class="sentence-review-text" lang="en" aria-live="polite" hidden></p>
@@ -118,7 +126,7 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
   return response;
  };
  const cache=new Map();
- let deck=[],position=0,cards=[],current=-1,overrides={},legacyIpa;
+ let deck=[],position=0,cards=[],current=-1,missing=0,overrides={},legacyIpa;
  async function cardFor(word,origin){
   const override=overrides[word];
   const file=typeof override==='string'&&datePage.test(override)?override:origin+'.html';
@@ -150,10 +158,7 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
   target.dataset.word=word;
   target.dataset.type='review';
   target.setAttribute('aria-expanded','false');
-  try{
-   const mastered=JSON.parse(localStorage.getItem('kaoyan_mastered_v1')||'[]');
-   target.classList.toggle('mastered',mastered.includes(word));
-  }catch{}
+  target.classList.toggle('mastered',masteredWords().has(word));
   const gloss=document.createElement('span');
   gloss.textContent='（'+meaning+'）';
   target.append(match[0],gloss);
@@ -178,26 +183,40 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
   text.hidden=true;text.replaceChildren();
   status.textContent='正在找首学原句…';
  }
+ function eligibleCard(index,step){
+  const mastered=masteredWords();
+  for(let i=index;i>=0&&i<cards.length;i+=step){
+   if(!mastered.has(cards[i].word))return i;
+  }
+  return -1;
+ }
+ function refreshPrevious(){
+  previous.disabled=previous.hidden||eligibleCard(current-1,-1)<0;
+ }
  function showActions(label){
-  previous.hidden=cards.length===0;previous.disabled=current<=0;
+  previous.hidden=cards.length===0;refreshPrevious();
   next.textContent=label;next.disabled=false;next.hidden=false;
  }
  function showCard(index){
-  const focusNext=index===0&&document.activeElement===previous;
+  const previousFocused=document.activeElement===previous;
   resetPronunciation();
   current=index;
   status.textContent='本轮第 '+(current+1)+' 个词';
   render(cards[current]);
   showActions('下一个');
-  if(focusNext)next.focus({preventScroll:true});
+  if(previousFocused&&previous.disabled)next.focus({preventScroll:true});
  }
  async function advance(){
-  if(current+1<cards.length){showCard(current+1);return;}
+  const cached=eligibleCard(current+1,1);
+  if(cached>=0){showCard(cached);return;}
   showLoading();
   while(position<deck.length&&dialog.open){
-   const card=await cardFor(...deck[position++]);
+   const [word,origin]=deck[position++];
+   if(masteredWords().has(word))continue;
+   const card=await cardFor(word,origin);
    if(!dialog.open)return;
-   if(!card)continue;
+   if(masteredWords().has(word))continue;
+   if(!card){missing++;continue;}
    cards.push(card);
    showCard(cards.length-1);
    return;
@@ -205,21 +224,26 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
   if(!dialog.open)return;
   const shown=cards.length;
   current=shown;
-  const missing=deck.length-shown;
   status.textContent=shown?'本轮完成 · 已练 '+shown+' 个词'+(missing?'；'+missing+' 个词未能找到首学原句。':'。'):
-   '暂时找不到可用的首学原句。';
+   (missing?'暂时找不到可用的首学原句。':'本轮没有未掌握的历史词。');
   showActions(shown?'再练一轮':'重试');
  }
  async function start(){
-  deck=[];position=0;cards=[];current=-1;cache.clear();
+  deck=[];position=0;cards=[];current=-1;missing=0;cache.clear();
   showLoading();
   try{
    const [first,sourceOverrides]=await Promise.all(['data/word-origins.json','data/word-source-overrides.json'].map(path=>fetchLocal(path).then(r=>r.json())));
    if(!dialog.open)return;
    overrides=sourceOverrides;
    const today=todayKey();
-   deck=shuffled(Object.entries(first).filter(([word,day])=>word&&typeof day==='string'&&dateKey.test(day)&&day<today));
-   if(!deck.length){status.textContent='还没有可复习的历史词。';return;}
+   const historical=Object.entries(first).filter(([word,day])=>word&&typeof day==='string'&&dateKey.test(day)&&day<today);
+   const mastered=masteredWords();
+   deck=shuffled(historical.filter(([word])=>!mastered.has(word)));
+   if(!deck.length){
+    status.textContent=historical.length?'历史词都已标绿。取消标绿后可再次复习。':'还没有可复习的历史词。';
+    if(historical.length)showActions('重新检查');
+    return;
+   }
    await advance();
   }catch{
    if(!dialog.open)return;
@@ -227,7 +251,14 @@ export function openSentenceReview(root,trigger,{makePhonetic,stopPronunciation=
    showActions('重试');
   }
  }
- previous.addEventListener('click',()=>{if(!previous.disabled&&current>0)showCard(current-1);});
+ previous.addEventListener('click',()=>{
+  const index=eligibleCard(current-1,-1);
+  if(index>=0)showCard(index);else refreshPrevious();
+ });
+ window.addEventListener('kaoyan:mastered-changed',refreshPrevious,{signal:controller.signal});
+ window.addEventListener('storage',event=>{
+  if(event.key===masteredKey||event.key===null)refreshPrevious();
+ },{signal:controller.signal});
  next.addEventListener('click',()=>{
   if(next.disabled)return;
   if(current>=0&&current<cards.length)advance();
