@@ -5,6 +5,7 @@ import argparse
 import json
 import re
 from datetime import date
+from html.parser import HTMLParser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -76,6 +77,58 @@ def origins():
             out.setdefault(word, day)
     return out
 
+class ReadingText(HTMLParser):
+    """Collect the title and English paragraphs, without study hints or scripts."""
+
+    def __init__(self):
+        super().__init__()
+        self.article_depth = 0
+        self.block = None
+        self.passages = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'div':
+            if self.article_depth:
+                self.article_depth += 1
+            elif 'article' in (dict(attrs).get('class') or '').split():
+                self.article_depth = 1
+        if tag == 'h1' or (tag == 'p' and self.article_depth == 1):
+            self.block = tag
+            self.passages.append([])
+
+    def handle_endtag(self, tag):
+        if tag == self.block:
+            self.block = None
+        if tag == 'div' and self.article_depth:
+            self.article_depth -= 1
+
+    def handle_data(self, data):
+        if self.block:
+            self.passages[-1].append(data)
+
+
+def mastered_mentions(passages, mastered):
+    """Find marked headwords and common written inflections in reading text."""
+    text = '\n'.join(passages)
+    separator = r'[-‐‑–\s]+'
+    matches = set()
+    for term in {NORM(word) for word in mastered if NORM(word)}:
+        *prefix, tail = re.split(separator, term)
+        forms = {tail}
+        if re.fullmatch('[a-z]+', tail):
+            forms.update(tail + ending for ending in ('s', 'es', 'ed', 'ing'))
+            if tail.endswith('e'):
+                forms.update((tail + 'd', tail[:-1] + 'ing'))
+            if re.search('[^aeiou]y$', tail):
+                forms.update((tail[:-1] + 'ies', tail[:-1] + 'ied'))
+            if re.search('[^aeiou][aeiou][bdgmnprt]$', tail):
+                forms.update(tail + tail[-1] + ending for ending in ('ed', 'ing'))
+        pattern = separator.join([*map(re.escape, prefix), '(?:' + '|'.join(map(re.escape, sorted(forms))) + ')'])
+        if re.search(r'(?<!\w)' + pattern + r'(?!\w)', text, re.I):
+            matches.add(term)
+    return sorted(matches)
+
+
 def validate(day, mastered=()):
     page = ROOT / 'days' / (day + '.html')
     published = publication_date(day)
@@ -113,10 +166,16 @@ def validate(day, mastered=()):
             elapsed = (date.fromisoformat(published) - date.fromisoformat(first[word])).days
             if elapsed not in REVIEW_INTERVALS and not documented_catch_up(day, word, elapsed):
                 issues.append('review outside scheduled interval: ' + word)
-    excluded = set(new + review) & set(map(NORM, mastered))
+    excluded = mastered_mentions(new + review, mastered)
     if excluded:
         issues.append('mastered words selected: ' + ', '.join(sorted(excluded)))
     text = page.read_text()
+    if mastered:
+        reading = ReadingText()
+        reading.feed(text)
+        in_body = mastered_mentions([''.join(block) for block in reading.passages], mastered)
+        if in_body:
+            issues.append('mastered words in reading text: ' + ', '.join(in_body))
     for script in ('app.js', 'sync.js'):
         if len(re.findall(r'<script\b[^>]*src=[\"\x27][^\"\x27]*' + re.escape(script), text)) != 1:
             issues.append('must load exactly once: ' + script)
